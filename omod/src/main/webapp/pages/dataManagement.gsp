@@ -5,6 +5,39 @@
     ]
 %>
 <style>
+.simple-table {
+    border: solid 1px #DDEEEE;
+    border-collapse: collapse;
+    border-spacing: 0;
+    font: normal 13px Arial, sans-serif;
+}
+.simple-table thead th {
+
+    border: solid 1px #DDEEEE;
+    color: #336B6B;
+    padding: 10px;
+    text-align: left;
+    text-shadow: 1px 1px 1px #fff;
+}
+.simple-table td {
+    border: solid 1px #DDEEEE;
+    color: #333;
+    padding: 5px;
+    text-shadow: 1px 1px 1px #fff;
+}
+table {
+    width: 95%;
+}
+th, td {
+    padding: 5px;
+    text-align: left;
+    height: 30px;
+    border-bottom: 1px solid #ddd;
+}
+tr:nth-child(even) {background-color: #f2f2f2;}
+#pager li{
+    display: inline-block;
+}
 .mainBox {
     float: left;
 }
@@ -21,6 +54,20 @@
     margin: 5px 2px;
     width: 48%;
 }
+.alignHorizontal {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start; 
+    align-items: flex-start
+}
+.wait-loading {
+    margin-right: 5px;
+    margin-left: 5px;
+}
+#fetchRiskScores {
+    margin-right: 5px;
+    margin-left: 5px;
+}
 </style>
 
 <div class="ke-page-sidebar">
@@ -32,27 +79,102 @@
 
 <div class="ke-page-content">
 
-    <fieldset>
-        <legend>Fetch IIT risk from NDWH</lenged>
+    <div>
+        <fieldset>
+            <legend>ML Summary</legend>
+            <div>
+                <table class="simple-table" width="100%">
+                    <thead>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td width="30%">Total Patients</td>
+                        <td>${totalCount}</td>
+                    </tr>
+                    <tr>
+                        <td width="30%">High Risk i.e Above ${riskThreshhold}</td>
+                        <td>${highRiskCount}</td>
+                    </tr>
+                    <tr>
+                        <td width="30%">Low Risk i.e Below ${riskThreshhold}</td>
+                        <td>${lowRiskCount}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </fieldset>
+    </div>
+    <div>
+        <fieldset>
+            <legend>Fetch IIT risk scores from Data Warehouse (NDWH)</legend>
 
-        <br/>
-        <span id="msgBox2" style="color: green"></span><br/>
-        <button  id="fetchRiskScores">Pull Patient scores</button>
-    </fieldset>
+            <br/>
+            <div id="message"><span id="lblText" style="color: Red; top: 50px;"></span></div>
+            <br/>
+            <br/>
+            <br/>
+            <div class="alignHorizontal">
+                <button id="fetchRiskScores">Pull Patient scores</button>
+                <div class="wait-loading"></div>
+            </div>
+        </fieldset>
+    </div>
 
 </div>
 
 <script type="text/javascript">
     jq = jQuery;
-    jQuery(function() {
-        jq('#fetchRiskScoress').click(function() {
-            jq.getJSON('${ ui.actionLink("vdot", "vdotPatientData", "getNimeConfirmVideoObs") }')
-                .success(function(data) {
-                    jq('#msgBox2').html("Vdot data pulled successfully");
-                })
-                .error(function(xhr, status, err) {
-                    jq('#msgBox2').html("There was an error pulling Vdot messages");
-                })
+    jq(function() {
+
+        var loadingImageURL = ui.resourceLink("kenyaemrml", "images/loading.gif");
+        var showLoadingImage = '<span style="padding:2px; display:inline-block;"> <img src="' + loadingImageURL + '" /> </span>';
+
+        //show message
+        function display_message(msg) {
+            jq("#lblText").html(msg);
+            jq('#message').fadeIn('slow').delay(3000).fadeOut('slow');
+        }
+
+        function display_loading(status) {
+            if(status) {
+                jq('.wait-loading').append(showLoadingImage);
+            } else {
+                jq('.wait-loading').empty();
+            }
+        }
+
+        // handle click event of the fetch data button
+        jq(document).on('click','#fetchRiskScores',function () {
+            //Run the fetch task
+            console.log('Starting the fetch task!');
+            display_message('Starting the fetch task!');
+            display_loading(true);
+            jq('#fetchRiskScores').attr('disabled', true);
+
+            fetchDataAsync().done(function(){
+                console.log('Finished the fetch task!');
+                display_message('Finished the fetch task!');
+                display_loading(false);
+                jq('#fetchRiskScores').attr('disabled', false);
+            });
         });
+
+        function fetchDataAsync(){
+            let dfrd = jq.Deferred();
+            //The Task
+            ui.getFragmentActionAsJson('kenyaemrml', 'iitRiskScoreHistory', 'fetchDataFromDWH', {}, function (result) {
+                if(result) {
+                    console.log('Success fetching data!');
+                } else {
+                    console.log('Failed to fetch data!');
+                }
+                dfrd.resolve();
+            });
+
+            return jq.when(dfrd).done(function(){
+                console.log('Finished the fetch task!');
+            }).promise();
+        }
+
     });
 </script>

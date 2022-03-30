@@ -59,10 +59,10 @@
     <!--App descriptor-->
     <bean id="kenyaemrml.app.predictions" factory-bean="kenyacore.appFactoryBean" factory-method="createInstance">
         <constructor-arg value="kenyaemrml.predictions" />
-        <constructor-arg value="ML" />
+        <constructor-arg value="Machine Learning" />
         <constructor-arg value="kenyaemrml/mlRiskScoreHome.page" />
-        <constructor-arg value="kenyaemrml:machine_learning_app_icon5.png" />
-        <constructor-arg value="1000" />
+        <constructor-arg value="kenyaemrml:machine_learning_app_icon.png" />
+        <constructor-arg value="999999" />
     </bean>
 
     <!--Reports-->

@@ -4,7 +4,11 @@ import org.openmrs.Patient;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.kenyaemrml.api.MLinKenyaEMRService;
 import org.openmrs.module.kenyaemrml.iit.PatientRiskScore;
+import org.openmrs.module.kenyaemrml.util.MLDataExchange;
+import org.openmrs.module.kenyaui.KenyaUiUtils;
+import org.openmrs.module.kenyaui.annotation.AppAction;
 import org.openmrs.ui.framework.UiUtils;
+import org.openmrs.ui.framework.annotation.SpringBean;
 import org.openmrs.ui.framework.page.PageModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +37,33 @@ public class IitRiskScoreHistoryFragmentController {
 			}
 		}
 		model.put("riskTrend", ui.toJson(riskTrend));
+	}
+	
+	/**
+	 * Fetch data from Data Warehouse
+	 * 
+	 * @return true on success and false on failure
+	 */
+	@AppAction("kenyaemrml.predictions")
+	public boolean fetchDataFromDWH(@SpringBean KenyaUiUtils kenyaUi, UiUtils ui) {
+		//Get global params
+		//Auth
+		//get total count by fetching only one record from remote
+		//if remote total is bigger than local total, fetch and save the last N records
+		//Fetch data 50 records at a time
+		//Extract data from JSON
+		//Save in the local DB
+		MLDataExchange mlDataExchange = new MLDataExchange();
+		boolean gotData = mlDataExchange.fetchDataFromDWH();
+		try {
+			System.err.println("kenyaemr ML - Going to sleep for 10 seconds");
+			Thread.sleep(10000);
+		}
+		catch (Exception ie) {
+			Thread.currentThread().interrupt();
+		}
+		System.err.println("kenyaemr ML - Finished the wait");
+		return (gotData);
 	}
 	
 }
