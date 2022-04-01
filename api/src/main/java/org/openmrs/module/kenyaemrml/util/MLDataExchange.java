@@ -1,69 +1,31 @@
 package org.openmrs.module.kenyaemrml.util;
 
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.node.ArrayNode;
-import org.codehaus.jackson.node.JsonNodeFactory;
-import org.codehaus.jackson.node.ObjectNode;
-import org.openmrs.Concept;
-import org.openmrs.Encounter;
-import org.openmrs.EncounterType;
-import org.openmrs.Form;
-import org.openmrs.GlobalProperty;
-import org.openmrs.Location;
-import org.openmrs.Obs;
-import org.openmrs.Patient;
-import org.openmrs.PatientIdentifier;
-import org.openmrs.PatientIdentifierType;
-import org.openmrs.PatientProgram;
-import org.openmrs.Person;
-import org.openmrs.PersonAddress;
-import org.openmrs.PersonAttributeType;
-import org.openmrs.Program;
-import org.openmrs.Provider;
-import org.openmrs.Relationship;
-import org.openmrs.User;
-import org.openmrs.api.EncounterService;
-import org.openmrs.api.FormService;
-import org.openmrs.api.PatientService;
-import org.openmrs.api.PersonService;
-import org.openmrs.api.ProgramWorkflowService;
-import org.openmrs.api.context.Context;
-import org.openmrs.api.db.hibernate.DbSessionFactory;
-import org.openmrs.module.kenyaemr.api.KenyaEmrService;
-import org.openmrs.module.kenyaemr.metadata.HivMetadata;
-import org.openmrs.module.kenyaemr.util.EmrUtils;
-import org.openmrs.module.kenyaemrml.api.MLinKenyaEMRService;
-import org.openmrs.module.metadatadeploy.MetadataUtils;
-import org.openmrs.util.PrivilegeConstants;
-import org.springframework.web.context.request.async.TimeoutCallableProcessingInterceptor;
-import org.openmrs.module.kenyaemrml.iit.PatientRiskScore;
-import org.openmrs.User;
-
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-
-import javax.net.ssl.HttpsURLConnection;
-import java.io.*;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.io.StringWriter;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import javax.net.ssl.HttpsURLConnection;
+
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.node.ObjectNode;
+import org.openmrs.GlobalProperty;
+import org.openmrs.Patient;
+import org.openmrs.User;
+import org.openmrs.api.PatientService;
+import org.openmrs.api.PersonService;
+import org.openmrs.api.context.Context;
+import org.openmrs.api.db.hibernate.DbSessionFactory;
+import org.openmrs.module.kenyaemrml.api.MLinKenyaEMRService;
+import org.openmrs.module.kenyaemrml.iit.PatientRiskScore;
+import org.openmrs.util.PrivilegeConstants;
 
 public class MLDataExchange {
 	

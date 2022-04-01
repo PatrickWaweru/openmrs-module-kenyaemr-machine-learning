@@ -1,5 +1,8 @@
 package org.openmrs.module.kenyaemrml.fragment.controller;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.openmrs.GlobalProperty;
 import org.openmrs.Patient;
 import org.openmrs.User;
@@ -18,11 +21,6 @@ import org.openmrs.util.PrivilegeConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.RequestParam;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * Controller for getting a history of risk score and grouped by the date of evaluation
