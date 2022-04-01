@@ -57,6 +57,8 @@ public interface MLinKenyaEMRService extends OpenmrsService {
 	 * @param riskScore
 	 * @return
 	 */
+	@Authorized(MLinKenyaEMRConfig.MODULE_PRIVILEGE)
+	@Transactional
 	PatientRiskScore saveOrUpdateRiskScore(PatientRiskScore riskScore);
 	
 	/**

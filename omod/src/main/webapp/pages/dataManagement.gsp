@@ -58,7 +58,7 @@ tr:nth-child(even) {background-color: #f2f2f2;}
     display: flex;
     flex-direction: row;
     justify-content: flex-start; 
-    align-items: flex-start
+    align-items: flex-start;
 }
 .wait-loading {
     margin-right: 5px;
@@ -67,6 +67,13 @@ tr:nth-child(even) {background-color: #f2f2f2;}
 #fetchRiskScores {
     margin-right: 5px;
     margin-left: 5px;
+}
+#updateSummary {
+    margin-right: 5px;
+    margin-left: 5px;
+}
+#stopPull {
+    display: none;
 }
 </style>
 
@@ -89,15 +96,19 @@ tr:nth-child(even) {background-color: #f2f2f2;}
                     <tbody>
                     <tr>
                         <td width="30%">Total Patients</td>
-                        <td>${totalCount}</td>
+                        <td id="strTotalCount">${totalCount}</td>
                     </tr>
                     <tr>
-                        <td width="30%">High Risk i.e Above ${riskThreshhold}</td>
-                        <td>${highRiskCount}</td>
+                        <td width="30%">High Risk</td>
+                        <td id="strHighRiskCount">${highRiskCount}</td>
                     </tr>
                     <tr>
-                        <td width="30%">Low Risk i.e Below ${riskThreshhold}</td>
-                        <td>${lowRiskCount}</td>
+                        <td width="30%">Low Risk</td>
+                        <td id="strLowRiskCount">${lowRiskCount}</td>
+                    </tr>
+                    <tr>
+                        <td width="30%">Risk Threshold </td>
+                        <td id="strRiskThreshhold">${riskThreshhold}</td>
                     </tr>
                     </tbody>
                 </table>
@@ -114,8 +125,10 @@ tr:nth-child(even) {background-color: #f2f2f2;}
             <br/>
             <br/>
             <div class="alignHorizontal">
+                <button id="updateSummary">Update Summary</button>
                 <button id="fetchRiskScores">Pull Patient scores</button>
                 <div class="wait-loading"></div>
+                <button id="stopPull">Stop the pull</button>
             </div>
         </fieldset>
     </div>
@@ -143,6 +156,23 @@ tr:nth-child(even) {background-color: #f2f2f2;}
             }
         }
 
+        // handle click event of the stop pull button
+        jq(document).on('click','#stopPull',function () {
+            console.log('Stoping the fetch task!');
+            display_message('Stoping the fetch task!');
+            ui.getFragmentActionAsJson('kenyaemrml', 'iitRiskScoreHistory', 'stopDataPull', {}, function (result) {
+                //stop pulling data from DWH
+            });
+            display_loading(false);
+            jq('#fetchRiskScores').attr('disabled', false);
+            jq('#stopPull').hide();  
+        });
+
+        // handle click event of the update summary button
+        jq(document).on('click','#updateSummary',function () {
+            updateSummaryTable();
+        });
+
         // handle click event of the fetch data button
         jq(document).on('click','#fetchRiskScores',function () {
             //Run the fetch task
@@ -150,12 +180,15 @@ tr:nth-child(even) {background-color: #f2f2f2;}
             display_message('Starting the fetch task!');
             display_loading(true);
             jq('#fetchRiskScores').attr('disabled', true);
+            jq('#stopPull').show();
 
             fetchDataAsync().done(function(){
                 console.log('Finished the fetch task!');
                 display_message('Finished the fetch task!');
                 display_loading(false);
                 jq('#fetchRiskScores').attr('disabled', false);
+                jq('#stopPull').hide();
+                updateSummaryTable();
             });
         });
 
@@ -174,6 +207,22 @@ tr:nth-child(even) {background-color: #f2f2f2;}
             return jq.when(dfrd).done(function(){
                 console.log('Finished the fetch task!');
             }).promise();
+        }
+
+        function updateSummaryTable() {
+            ui.getFragmentActionAsJson('kenyaemrml', 'iitRiskScoreHistory', 'fetchLocalSummary', {}, function (result) {
+                if(result) {
+                    display_message('Success fetching summary!');
+                    console.log('Success fetching summary!');
+                    jq("#strTotalCount").html(result.totalCount);
+                    jq("#strHighRiskCount").html(result.highRiskCount);
+                    jq("#strLowRiskCount").html(result.lowRiskCount);
+                    jq("#strRiskThreshhold").html(result.riskThreshhold);
+                } else {
+                    display_message('Failed to fetch summary!');
+                    console.log('Failed to fetch summary!');
+                }
+            });
         }
 
     });
