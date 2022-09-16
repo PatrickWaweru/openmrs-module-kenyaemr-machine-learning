@@ -86,6 +86,8 @@ public class HighIITRiskScoreCalculation extends AbstractPatientCalculation impl
 				}
 				ret.put(ptId, new BooleanResult(hasHighRiskScore, this, context));
 			}
+
+			System.err.println("Total patients in report: " + ret.size());
 		}
 		return ret;
 	}
