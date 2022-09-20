@@ -110,6 +110,17 @@
         </addColumn>  
     </changeSet>
 
-
+    <!-- Add not null constraint to the patient_id column -->
+    <changeSet author="pwaweru" id="kenyaemr-ML-patientid-field-20220919-215430"> 
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="kenyaemr_ml_patient_risk_score"/>
+            <columnExists columnName="patient_id" tableName="kenyaemr_ml_patient_risk_score"/>
+        </preConditions>
+        <comment>Adding not null constraint to column</comment>
+        <addNotNullConstraint 
+           columnDataType="int"  
+           columnName="patient_id" 
+           tableName="kenyaemr_ml_patient_risk_score"/>
+    </changeSet>
  
 </databaseChangeLog>
