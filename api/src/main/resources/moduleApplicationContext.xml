@@ -49,7 +49,7 @@
                                     </property>
                                 </bean>
                             </property>
-                            <property name="modelService">
+                            <!-- <property name="modelService">
                                 <bean class="org.openmrs.module.kenyaemrml.api.impl.ModelServiceImpl">
                                     <property name="sessionFactory">
                                         <ref bean="sessionFactory" />
@@ -62,7 +62,7 @@
                                         </bean>
                                     </property>
                                 </bean>
-                            </property>
+                            </property> -->
                         </bean>
                     </property>
                     <property name="preInterceptors">
