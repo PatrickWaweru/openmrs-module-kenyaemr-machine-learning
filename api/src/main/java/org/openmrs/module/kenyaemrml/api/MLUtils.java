@@ -27,7 +27,7 @@ import org.openmrs.GlobalProperty;
 import org.openmrs.Location;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.kenyaemr.api.KenyaEmrService;
-import org.openmrs.module.kenyaemrml.api.service.ModelService;
+import org.openmrs.module.kenyaemrml.api.impl.ModelServiceImpl;
 import org.openmrs.module.kenyaemrml.domain.ModelInputFields;
 import org.openmrs.module.kenyaemrml.domain.ScoringResult;
 import org.openmrs.ui.framework.WebConstants;
@@ -399,7 +399,7 @@ public class MLUtils {
 	public static String generateIITMLScore(String payload) {
 		String mlScore = "";
 		try {
-			ModelService modelService = new ModelService();
+			ModelServiceImpl modelService = Context.getService(ModelServiceImpl.class);
 			String requestBody = payload;
 			ObjectNode modelConfigs = MLUtils.getModelConfig(requestBody);
 			String facilityMflCode = modelConfigs.get(MLUtils.FACILITY_ID_REQUEST_VARIABLE).asText();

@@ -64,12 +64,12 @@ import org.openmrs.api.UserService;
 import org.openmrs.api.impl.BaseOpenmrsService;
 import org.openmrs.module.kenyaemrml.api.MLinKenyaEMRService;
 import org.openmrs.module.kenyaemrml.api.db.hibernate.HibernateMLinKenyaEMRDao;
+import org.openmrs.module.kenyaemrml.api.impl.ModelServiceImpl;
 import org.openmrs.module.kenyaemrml.iit.PatientRiskScore;
 import org.openmrs.ui.framework.SimpleObject;
 import java.text.SimpleDateFormat;
 import org.openmrs.GlobalProperty;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.kenyaemrml.api.service.ModelService;
 import org.apache.commons.lang.time.DateUtils;
 
 public class MLDataExchange {
@@ -691,7 +691,7 @@ public class MLDataExchange {
         GlobalProperty gpIITFeatureEnabled = Context.getAdministrationService().getGlobalPropertyObject(iitFeatureEnabled);
 
         if(gpIITFeatureEnabled != null && gpIITFeatureEnabled.getPropertyValue().trim().equalsIgnoreCase("true")) {
-			ModelService modelService = new ModelService();
+			ModelServiceImpl modelService = Context.getService(ModelServiceImpl.class);
 			long totalRemote = patientsGroup.size();
 			long totalPages = patientsGroup.size();
 			long currentPage = 1;
@@ -760,8 +760,7 @@ public class MLDataExchange {
 	 * @param patientsGroup - the given list of patients
 	 */
 	public void generateMLScoresFetch(HashSet<Patient> patientsGroup) {
-
-		ModelService modelService = new ModelService();
+		ModelServiceImpl modelService = Context.getService(ModelServiceImpl.class);
 		for (Patient patient : patientsGroup) {
 			try {
 				System.out.println("IIT ML Score: Scoring patient: " + patient.getId());

@@ -1,4 +1,4 @@
-package org.openmrs.module.kenyaemrml.api.service;
+package org.openmrs.module.kenyaemrml.api.impl;
 
 import org.apache.commons.lang.time.DateUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -38,6 +38,8 @@ import org.openmrs.module.kenyaemr.wrapper.PatientWrapper;
 import org.openmrs.module.kenyaemrml.api.IITMLService;
 import org.openmrs.module.kenyaemrml.api.MLUtils;
 import org.openmrs.module.kenyaemrml.api.MLinKenyaEMRService;
+import org.openmrs.module.kenyaemrml.api.ModelService;
+import org.openmrs.module.kenyaemrml.api.db.hibernate.HibernateMLinKenyaEMRDao;
 import org.openmrs.module.kenyaemrml.domain.ModelInputFields;
 import org.openmrs.module.kenyaemrml.domain.ScoringResult;
 import org.openmrs.module.kenyaemrml.iit.PatientRiskScore;
@@ -68,7 +70,7 @@ import java.util.zip.ZipInputStream;
 /**
  * Service class used to prepare and score models
  */
-public class ModelService extends BaseOpenmrsService {
+public class ModelServiceImpl extends BaseOpenmrsService implements ModelService {
 	
 	private Log log = LogFactory.getLog(this.getClass());
 
@@ -101,7 +103,7 @@ public class ModelService extends BaseOpenmrsService {
 		try {
 			String fullModelZipFileName = modelId.concat(".pmml.zip");
 			fullModelZipFileName = "hts/" + fullModelZipFileName;
-			InputStream stream = ModelService.class.getClassLoader().getResourceAsStream(fullModelZipFileName);
+			InputStream stream = ModelServiceImpl.class.getClassLoader().getResourceAsStream(fullModelZipFileName);
 			BufferedInputStream bistream = new BufferedInputStream(stream);
 			// Model name
 			String fullModelFileName = modelId.concat(".pmml");
