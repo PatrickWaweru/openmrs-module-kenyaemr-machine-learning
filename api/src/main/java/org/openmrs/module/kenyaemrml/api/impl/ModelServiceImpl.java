@@ -1,5 +1,19 @@
 package org.openmrs.module.kenyaemrml.api.impl;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.lang.time.DateUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -15,7 +29,6 @@ import org.jpmml.evaluator.Computable;
 import org.jpmml.evaluator.Evaluator;
 import org.jpmml.evaluator.FieldValue;
 import org.jpmml.evaluator.InputField;
-import org.jpmml.evaluator.LoadingModelEvaluatorBuilder;
 import org.jpmml.evaluator.OutputField;
 import org.openmrs.Concept;
 import org.openmrs.Encounter;
@@ -35,6 +48,7 @@ import org.openmrs.module.kenyaemr.metadata.HivMetadata;
 import org.openmrs.module.kenyaemr.metadata.MchMetadata;
 import org.openmrs.module.kenyaemr.util.EncounterBasedRegimenUtils;
 import org.openmrs.module.kenyaemr.wrapper.PatientWrapper;
+import org.openmrs.module.kenyaemrml.api.HTSMLService;
 import org.openmrs.module.kenyaemrml.api.IITMLService;
 import org.openmrs.module.kenyaemrml.api.MLUtils;
 import org.openmrs.module.kenyaemrml.api.MLinKenyaEMRService;
@@ -96,43 +110,40 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		System.err.println("IIT ML: Init IIT ML Service");
 		this.iITMLService = iITMLService;
 	}
+
+	private HTSMLService hTSMLService;
+	
+	/**
+	 * Injected in moduleApplicationContext.xml
+	 */
+	public void setHTSMLService(HTSMLService hTSMLService) {
+		System.err.println("HTS ML: Init HTS ML Service");
+		this.hTSMLService = hTSMLService;
+	}
 	
 	public ScoringResult htsscore(String modelId, String facilityName, String encounterDate, ModelInputFields inputFields, boolean debug) {
-		
 		try {
-			String fullModelZipFileName = modelId.concat(".pmml.zip");
-			fullModelZipFileName = "hts/" + fullModelZipFileName;
-			InputStream stream = ModelServiceImpl.class.getClassLoader().getResourceAsStream(fullModelZipFileName);
-			BufferedInputStream bistream = new BufferedInputStream(stream);
-			// Model name
-			String fullModelFileName = modelId.concat(".pmml");
-			ZipInputStream zis = new ZipInputStream(bistream);
-			ZipEntry ze = null;
-
-			while ((ze = zis.getNextEntry()) != null) {
-				if(ze.getName().trim().equalsIgnoreCase(fullModelFileName)) {
-					// Building a model evaluator from a PMML file
-					Evaluator evaluator = new LoadingModelEvaluatorBuilder().load(zis).build();
-					evaluator.verify();
-					ScoringResult scoringResult = new ScoringResult(score(evaluator, inputFields, debug));
-					// System.out.println("Received the scoring result");
-					return scoringResult;
-				}
+			Evaluator evaluator;
+			if(hTSMLService != null) {
+				evaluator = hTSMLService.getEvaluator();
+			} else {
+				HTSMLService hTSMLService2 = Context.getService(HTSMLService.class);
+				evaluator = hTSMLService2.getEvaluator();
 			}
+			
+			evaluator.verify();
+			ScoringResult scoringResult = new ScoringResult(score(evaluator, inputFields, debug));
+			return scoringResult;
 		}
 		catch (Exception e) {
-			log.error("Exception during preparation of input parameters or scoring of values for HTS model: " + e.getMessage());
-			System.err.println("Exception during preparation of input parameters or scoring of values for HTS model: " + e.getMessage());
+			log.error("IIT ML: Exception during preparation of input parameters or scoring of values for IIT model: " + e.getMessage());
+			System.err.println("IIT ML: Exception during preparation of input parameters or scoring of values for IIT model: " + e.getMessage());
 			e.printStackTrace();
 			return(null);
 		}
-
-		// Upon Failure
-		System.err.println("Exception during scoring of HTS model: unzip failed");
-		return(null);
 	}
 
-	public ScoringResult iitscore(String modelId, String facilityName, String encounterDate, ModelInputFields inputFields, boolean debug) {	
+	public ScoringResult iitscore(String modelId, String facilityName, String encounterDate, ModelInputFields inputFields, boolean debug) {
 		try {
 			Evaluator evaluator;
 			if(iITMLService != null) {
@@ -160,7 +171,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	 * @param inputFields
 	 * @return
 	 */
-	private Map<String, Object> score(Evaluator evaluator, ModelInputFields inputFields, boolean debug) {
+	public Map<String, Object> score(Evaluator evaluator, ModelInputFields inputFields, boolean debug) {
 		Map<String, Object> result = new HashMap<String, Object>();
 		
 		Map<FieldName, ?> evaluationResultFromEvaluator = evaluator.evaluate(prepareEvaluationArgs(evaluator, inputFields));
@@ -201,7 +212,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	 * @param inputFields
 	 * @return variable-value pair
 	 */
-	private Map<FieldName, FieldValue> prepareEvaluationArgs(Evaluator evaluator, ModelInputFields inputFields) {
+	public Map<FieldName, FieldValue> prepareEvaluationArgs(Evaluator evaluator, ModelInputFields inputFields) {
 		Map<FieldName, FieldValue> arguments = new LinkedHashMap<FieldName, FieldValue>();
 		
 		List<InputField> evaluatorFields = evaluator.getActiveFields();
@@ -566,7 +577,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	 * @param
 	 * @return
 	 */
-	SimpleObject getEncDetails(Set<Obs> obsList, Encounter e, List<Encounter> allClinicalEncounters) {
+	public SimpleObject getEncDetails(Set<Obs> obsList, Encounter e, List<Encounter> allClinicalEncounters) {
 		SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd-MMM-yyyy");
 		Integer tcaDateConcept = 5096;
 		String tcaDateString = null;
@@ -592,7 +603,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	 * Was there a visit on the appointment day?
 	 */
 	
-	private boolean hasVisitOnDate(Date appointmentDate, Patient patient, List<Encounter> allEncounters) {
+	public boolean hasVisitOnDate(Date appointmentDate, Patient patient, List<Encounter> allEncounters) {
 		boolean hasVisitOnDate = false;
 		for (Encounter e : allEncounters) {
 			int sameDay = new LocalDate(e.getEncounterDatetime()).compareTo(new LocalDate(appointmentDate));
@@ -610,7 +621,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	 * @param encounter the encounter
 	 * @return true if was part of scheduled visit
 	 */
-	private boolean wasScheduledVisit(Encounter encounter) {
+	public boolean wasScheduledVisit(Encounter encounter) {
 		// Firstly look for a scheduled visit obs which has value = true
 		Concept scheduledVisit = Dictionary.getConcept(Dictionary.SCHEDULED_VISIT);
 		for (Obs obs : encounter.getAllObs()) {

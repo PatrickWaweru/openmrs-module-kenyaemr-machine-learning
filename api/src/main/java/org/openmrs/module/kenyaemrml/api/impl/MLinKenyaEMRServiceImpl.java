@@ -23,6 +23,7 @@ import org.openmrs.module.kenyaemrml.api.MLinKenyaEMRService;
 import org.openmrs.module.kenyaemrml.api.db.hibernate.HibernateMLinKenyaEMRDao;
 import org.openmrs.module.kenyaemrml.iit.PatientRiskScore;
 import org.openmrs.ui.framework.SimpleObject;
+import org.openmrs.module.kenyaemrml.api.ModelService;
 
 public class MLinKenyaEMRServiceImpl extends BaseOpenmrsService implements MLinKenyaEMRService {
 	
@@ -30,7 +31,7 @@ public class MLinKenyaEMRServiceImpl extends BaseOpenmrsService implements MLinK
 	
 	UserService userService;
 
-	ModelServiceImpl modelService;
+	ModelService modelService;
 	
 	/**
 	 * Injected in moduleApplicationContext.xml
@@ -49,7 +50,7 @@ public class MLinKenyaEMRServiceImpl extends BaseOpenmrsService implements MLinK
 	/**
 	 * Injected in moduleApplicationContext.xml
 	 */
-	public void setModelService(ModelServiceImpl modelService) {
+	public void setModelService(ModelService modelService) {
 		this.modelService = modelService;
 	}
 	
