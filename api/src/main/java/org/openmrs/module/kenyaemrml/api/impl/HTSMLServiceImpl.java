@@ -28,11 +28,16 @@ public class HTSMLServiceImpl extends BaseOpenmrsService implements HTSMLService
 
 	// Done only once
 	public HTSMLServiceImpl() {
-		onStartup();
+		init();
 	}
 	
 	@Override
 	public void onStartup() {
+		// Hold
+		// init();
+	}
+
+	private void init() {
 		try {
 			String modelId = "hts_xgb_1211_jan_2023";
 			String fullModelZipFileName = modelId.concat(".pmml.zip");

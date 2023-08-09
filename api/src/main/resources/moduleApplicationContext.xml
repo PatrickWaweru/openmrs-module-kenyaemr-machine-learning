@@ -28,45 +28,23 @@
     <!-- Wraps MLinKenyaEMRService methods in DB transactions and OpenMRS interceptors,
     which set audit info like dateCreated, changedBy, etc.-->
 
-    <!-- Adds MLinKenyaEMRService to OpenMRS context so it can be accessed
+    <!-- Adds MLinKenyaEMRService to OpenMRS context so it can be accessed - moduleService
     calling Context.getService(MLinKenyaEMRService.class) -->
 
     <bean parent="serviceContext">
         <property name="moduleService">
             <list>
                 <value>org.openmrs.module.kenyaemrml.api.MLinKenyaEMRService</value>
-                <bean
-                        class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+                <bean class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
                     <property name="transactionManager">
                         <ref bean="transactionManager" />
                     </property>
                     <property name="target">
-                        <bean class="org.openmrs.module.kenyaemrml.api.impl.MLinKenyaEMRServiceImpl">
+                        <bean id="mLinKenyaEMRService" class="org.openmrs.module.kenyaemrml.api.impl.MLinKenyaEMRServiceImpl">
                             <property name="mLinKenyaEMRDao">
-                                <bean class="org.openmrs.module.kenyaemrml.api.db.hibernate.HibernateMLinKenyaEMRDao">
+                                <bean id="hibernateMLinKenyaEMRDao" class="org.openmrs.module.kenyaemrml.api.db.hibernate.HibernateMLinKenyaEMRDao">
                                     <property name="sessionFactory">
                                         <ref bean="sessionFactory" />
-                                    </property>
-                                </bean>
-                            </property>
-                            <property name="modelService">
-                                <bean class="org.openmrs.module.kenyaemrml.api.impl.ModelServiceImpl">
-                                    <property name="sessionFactory">
-                                        <ref bean="sessionFactory" />
-                                    </property>
-                                    <property name="iITMLService">
-                                        <bean class="org.openmrs.module.kenyaemrml.api.impl.IITMLServiceImpl">
-                                            <property name="sessionFactory">
-                                                <ref bean="sessionFactory" />
-                                            </property>
-                                        </bean>
-                                    </property>
-                                    <property name="hTSMLService">
-                                        <bean class="org.openmrs.module.kenyaemrml.api.impl.HTSMLServiceImpl">
-                                            <property name="sessionFactory">
-                                                <ref bean="sessionFactory" />
-                                            </property>
-                                        </bean>
                                     </property>
                                 </bean>
                             </property>
@@ -93,13 +71,9 @@
                         <ref bean="transactionManager" />
                     </property>
                     <property name="target">
-                        <bean class="org.openmrs.module.kenyaemrml.api.impl.ModelServiceImpl">
-                            <property name="iITMLService">
-                                <bean class="org.openmrs.module.kenyaemrml.api.impl.IITMLServiceImpl">
-                                    <property name="sessionFactory">
-                                        <ref bean="sessionFactory" />
-                                    </property>
-                                </bean>
+                        <bean id="modelService" class="org.openmrs.module.kenyaemrml.api.impl.ModelServiceImpl">
+                            <property name="sessionFactory">
+                                <ref bean="sessionFactory" />
                             </property>
                         </bean>
                     </property>
@@ -124,7 +98,7 @@
                         <ref bean="transactionManager" />
                     </property>
                     <property name="target">
-                        <bean class="org.openmrs.module.kenyaemrml.api.impl.IITMLServiceImpl">
+                        <bean id="iITMLService" class="org.openmrs.module.kenyaemrml.api.impl.IITMLServiceImpl">
                             <property name="sessionFactory">
                                 <ref bean="sessionFactory" />
                             </property>
@@ -151,7 +125,7 @@
                         <ref bean="transactionManager" />
                     </property>
                     <property name="target">
-                        <bean class="org.openmrs.module.kenyaemrml.api.impl.HTSMLServiceImpl">
+                        <bean id="hTSMLService" class="org.openmrs.module.kenyaemrml.api.impl.HTSMLServiceImpl">
                             <property name="sessionFactory">
                                 <ref bean="sessionFactory" />
                             </property>

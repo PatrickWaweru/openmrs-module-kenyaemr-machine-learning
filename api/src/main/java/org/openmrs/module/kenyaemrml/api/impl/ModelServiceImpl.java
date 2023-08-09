@@ -40,6 +40,7 @@ import org.openmrs.Patient;
 import org.openmrs.PatientProgram;
 import org.openmrs.Program;
 import org.openmrs.api.ProgramWorkflowService;
+import org.openmrs.api.UserService;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.impl.BaseOpenmrsService;
 import org.openmrs.module.kenyaemr.Dictionary;
@@ -61,24 +62,8 @@ import org.openmrs.module.reporting.common.Age;
 import org.openmrs.parameter.EncounterSearchCriteria;
 import org.openmrs.parameter.EncounterSearchCriteriaBuilder;
 import org.openmrs.ui.framework.SimpleObject;
-
-import java.io.BufferedInputStream;
-import java.io.InputStream;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 /**
  * Service class used to prepare and score models
@@ -100,38 +85,13 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	private Session getSession() {
 		return sessionFactory.getCurrentSession();
 	}
-
-	private IITMLService iITMLService;
-	
-	/**
-	 * Injected in moduleApplicationContext.xml
-	 */
-	public void setIITMLService(IITMLService iITMLService) {
-		System.err.println("IIT ML: Init IIT ML Service");
-		this.iITMLService = iITMLService;
-	}
-
-	private HTSMLService hTSMLService;
-	
-	/**
-	 * Injected in moduleApplicationContext.xml
-	 */
-	public void setHTSMLService(HTSMLService hTSMLService) {
-		System.err.println("HTS ML: Init HTS ML Service");
-		this.hTSMLService = hTSMLService;
-	}
 	
 	public ScoringResult htsscore(String modelId, String facilityName, String encounterDate, ModelInputFields inputFields, boolean debug) {
 		try {
 			Evaluator evaluator;
-			if(hTSMLService != null) {
-				evaluator = hTSMLService.getEvaluator();
-			} else {
-				HTSMLService hTSMLService2 = Context.getService(HTSMLService.class);
-				evaluator = hTSMLService2.getEvaluator();
-			}
-			
-			evaluator.verify();
+			HTSMLService hTSMLService = Context.getService(HTSMLService.class);
+			evaluator = hTSMLService.getEvaluator();
+			// evaluator.verify();
 			ScoringResult scoringResult = new ScoringResult(score(evaluator, inputFields, debug));
 			return scoringResult;
 		}
@@ -146,13 +106,9 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	public ScoringResult iitscore(String modelId, String facilityName, String encounterDate, ModelInputFields inputFields, boolean debug) {
 		try {
 			Evaluator evaluator;
-			if(iITMLService != null) {
-				evaluator = iITMLService.getEvaluator();
-			} else {
-				IITMLService iITMLService2 = Context.getService(IITMLService.class);
-				evaluator = iITMLService2.getEvaluator();
-			}
-			evaluator.verify();
+			IITMLService iITMLService = Context.getService(IITMLService.class);
+			evaluator = iITMLService.getEvaluator();
+			// // evaluator.verify();
 			ScoringResult scoringResult = new ScoringResult(score(evaluator, inputFields, debug));
 			return scoringResult;
 		}

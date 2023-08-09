@@ -28,11 +28,16 @@ public class IITMLServiceImpl extends BaseOpenmrsService implements IITMLService
 
 	// Done only once
 	public IITMLServiceImpl() {
-		onStartup();
+		init();
 	}
 	
 	@Override
 	public void onStartup() {
+		// Hold
+		// init();
+	}
+
+	private void init() {
 		try {
 			String modelId = "XGB_IIT_02232023";
 			String fullModelZipFileName = modelId.concat(".pmml.zip");
