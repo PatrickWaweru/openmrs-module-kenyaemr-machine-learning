@@ -108,7 +108,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			Evaluator evaluator;
 			IITMLService iITMLService = Context.getService(IITMLService.class);
 			evaluator = iITMLService.getEvaluator();
-			// // evaluator.verify();
+			// evaluator.verify();
 			ScoringResult scoringResult = new ScoringResult(score(evaluator, inputFields, debug));
 			return scoringResult;
 		}
