@@ -590,6 +590,7 @@ public class MLDataExchange {
 		Boolean ret = false;
 
 		PatientService patientService = Context.getPatientService();
+		ModelService modelService = Context.getService(ModelService.class);
 		// We have started the IIT score generation task. We now set the flag.
 		setStatusOfIITGenScoresTask(true);
 
@@ -605,9 +606,11 @@ public class MLDataExchange {
 		for (Patient patient : allPatients) {
 			if (!getContinueGeneratingIITScores()) {
 				setStatusOfIITGenScoresTask(false);
+				System.out.println("IIT ML: Gen was manualy stopped");
 				return (false);
 			}
 			if (patient != null) {
+				System.out.println("IIT ML: Analyzing patient: " + patient.getId());
 				ProgramWorkflowService pwfservice = Context.getProgramWorkflowService();
 				List<PatientProgram> programs = pwfservice.getPatientPrograms(patient, hivProgram, null, null, null,null, false);
 				if (programs.size() > 0) {
@@ -615,15 +618,31 @@ public class MLDataExchange {
 						Date lastScore = mLinKenyaEMRService.getPatientLatestRiskEvaluationDate(patient);
 						// check if a greencard has been filled since the last score
 						if((lastScore == null || greenCardFilledSinceLastScore(patient, lastScore))) {
+							System.out.println("IIT ML: Adding patient to list: " + patient.getId());
 							patientsGroup.add(patient);
+
+							////// for debug only //////
+							PatientRiskScore patientRiskScore = modelService.generatePatientRiskScore(patient);
+							// Save/Update to DB (for reports)
+							System.out.println("IIT ML: Got risk score for patient: " + patient.getId());
+							System.out.println("IIT ML: Saving to DB: " + patientRiskScore);
+							mLinKenyaEMRService.saveOrUpdateRiskScore(patientRiskScore);
+							////// end for debug only //////
+						} else {
+							System.out.println("IIT ML: Patient not viable: " + patient.getId());
 						}
+					} else {
+						System.out.println("IIT ML: Patient not viable: " + patient.getId());
 					}
+				} else {
+					System.out.println("IIT ML: Patient not viable: " + patient.getId());
 				}
 			}
 		}
 		System.out.println("IIT ML Gen For All Task: Patients to be scored: " + patientsGroup.size());
 
-		ret = generateAndSave(patientsGroup);
+		//// commented for debug
+		// ret = generateAndSave(patientsGroup);
 
 		// We have finished the generation task. We now set the flag.
 		setStatusOfIITGenScoresTask(false);
@@ -698,6 +717,7 @@ public class MLDataExchange {
 			long currentPage = 1;
 			for (Patient patient : patientsGroup) {
 				if (!getContinueGeneratingIITScores()) {
+					System.out.println("IIT ML: Gen was manualy stopped");
 					return (false);
 				}
 				System.out.println("IIT ML Score: Generating a new risk score || and saving to DB");
@@ -705,6 +725,8 @@ public class MLDataExchange {
 				try {
 					PatientRiskScore patientRiskScore = modelService.generatePatientRiskScore(patient);
 					// Save/Update to DB (for reports)
+					System.out.println("IIT ML: Got risk score for patient: " + patient.getId());
+					System.out.println("IIT ML: Saving to DB: " + patientRiskScore);
 					mLinKenyaEMRService.saveOrUpdateRiskScore(patientRiskScore);
 				} catch(Exception ex) {
 					System.err.println("IIT ML Score: ERROR: Failed to generate patient score: " + ex.getMessage());
@@ -713,6 +735,8 @@ public class MLDataExchange {
 				setScoreGenerationStatus((long)Math.floor(((currentPage * 1.00 / totalPages * 1.00) * totalRemote)), totalRemote);
 				currentPage++;
 			}
+		} else {
+			System.out.println("IIT ML: IIT feature has not been enabled");
 		}
 
 		return(ret);

@@ -21,6 +21,7 @@ import org.apache.commons.logging.LogFactory;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
 import org.dmg.pmml.FieldName;
+import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.joda.time.Days;
@@ -37,6 +38,8 @@ import org.openmrs.GlobalProperty;
 import org.openmrs.Location;
 import org.openmrs.Obs;
 import org.openmrs.Patient;
+import org.openmrs.PatientIdentifier;
+import org.openmrs.PatientIdentifierType;
 import org.openmrs.PatientProgram;
 import org.openmrs.Program;
 import org.openmrs.api.ProgramWorkflowService;
@@ -1558,7 +1561,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 
 			// Get JSON Payload
 			String payload = mlScoringRequestPayload.toJson();
-			// System.out.println("IIT ML: Prediction Payload: " + payload);
+			System.out.println("IIT ML: Prediction Payload: " + payload);
 			
 			// Get the IIT ML score
 			try {
@@ -1569,7 +1572,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					ObjectMapper mapper = new ObjectMapper();
 					ObjectNode jsonNode = (ObjectNode) mapper.readTree(mlScoreResponse);
 					if (jsonNode != null) {
-						// System.out.println("IIT ML: Got ML Score Payload as: " + mlScoreResponse);
+						System.out.println("IIT ML: Got ML Score Payload as: " + mlScoreResponse);
 						Double riskScore = jsonNode.get("result").get("predictions").get("Probability_1").getDoubleValue();
 						
 						System.out.println("IIT ML: Got ML score as: " + riskScore);
@@ -1602,6 +1605,24 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 
 						System.out.println("IIT ML: Got ML Description as: " + patientRiskScore.getDescription());
 						patientRiskScore.setEvaluationDate(new Date());
+
+						try {
+							patientRiskScore.setPayload(payload);
+							patientRiskScore = extractPayload(patientRiskScore, mlScoringRequestPayload);
+
+							String facilityMflCode = MLUtils.getDefaultMflCode();
+							patientRiskScore.setMflCode(facilityMflCode);
+
+							Hibernate.initialize(patient.getIdentifiers()); // fix lazy loading
+							String UNIQUE_PATIENT_NUMBER = "05ee9cf4-7242-4a17-b4d4-00f707265c8a";
+							PatientIdentifierType patientIdentifierType = Context.getPatientService().getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
+							PatientIdentifier cccNumberId = patient.getPatientIdentifier(patientIdentifierType); // error with lazy loading
+							String cccNumber = cccNumberId.getIdentifier();
+							patientRiskScore.setCccNumber(cccNumber);
+						} catch(Exception ex) {
+							System.err.println("ITT ML: Could not add payload, ccc or mfl " + ex.getMessage());
+							ex.printStackTrace();
+						}
 						
 						System.out.println("IIT ML: PatientRiskScore is: " + patientRiskScore.toString());
 
@@ -1636,6 +1657,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		patientRiskScore.setPatient(patient);
 		patientRiskScore.setDescription("Unknown Risk");
 		patientRiskScore.setEvaluationDate(new Date());
+		String randUUID = UUID.randomUUID().toString(); 
+		patientRiskScore.setSourceSystemUuid(randUUID);
 
 		stopTime = System.currentTimeMillis();
 		long elapsedTime = stopTime - startTime;
@@ -1647,6 +1670,138 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		System.out.println("Memory used: " + usedMemory);
 
 		return(patientRiskScore);
+	}
+
+	private PatientRiskScore extractPayload(PatientRiskScore prs, SimpleObject mlScoringRequestPayload) {
+		SimpleObject load = (SimpleObject) mlScoringRequestPayload.get("variableValues");
+
+		try {
+			prs.setAge(convertToString(load.get("Age")));
+			prs.setBirths(convertToString(load.get("births")));
+			prs.setPregnancies(convertToString(load.get("pregnancies")));
+			prs.setLiteracy(convertToString(load.get("literacy")));
+			prs.setPoverty(convertToString(load.get("poverty")));
+			prs.setAnc(convertToString(load.get("anc")));
+			prs.setPnc(convertToString(load.get("pnc")));
+			prs.setSba(convertToString(load.get("sba")));
+			prs.setHiv_prev(convertToString(load.get("hiv_prev")));
+			prs.setHiv_count(convertToString(load.get("hiv_count")));
+			prs.setCondom(convertToString(load.get("condom")));
+			prs.setIntercourse(convertToString(load.get("intercourse")));
+			prs.setIn_union(convertToString(load.get("in_union")));
+			prs.setCircumcision(convertToString(load.get("circumcision")));
+			prs.setPartner_away(convertToString(load.get("partner_away")));
+			prs.setPartner_men(convertToString(load.get("partner_men")));
+			prs.setPartner_women(convertToString(load.get("partner_women")));
+			prs.setSti(convertToString(load.get("sti")));
+			prs.setFb(convertToString(load.get("fb")));
+			prs.setN_appts(convertToString(load.get("n_appts")));
+			prs.setMissed1(convertToString(load.get("missed1")));
+			prs.setMissed5(convertToString(load.get("missed5")));
+			prs.setMissed30(convertToString(load.get("missed30")));
+			prs.setMissed1_last5(convertToString(load.get("missed1_last5")));
+			prs.setMissed5_last5(convertToString(load.get("missed5_last5")));
+			prs.setMissed30_last5(convertToString(load.get("missed30_last5")));
+			prs.setNum_hiv_regimens(convertToString(load.get("num_hiv_regimens")));
+			prs.setN_visits_lastfive(convertToString(load.get("n_visits_lastfive")));
+			prs.setN_unscheduled_lastfive(convertToString(load.get("n_unscheduled_lastfive")));
+			prs.setBMI(convertToString(load.get("BMI")));
+			prs.setChangeInBMI(convertToString(load.get("changeInBMI")));
+			prs.setWeight(convertToString(load.get("Weight")));
+			prs.setChangeInWeight(convertToString(load.get("changeInWeight")));
+			prs.setNum_adherence_ART(convertToString(load.get("num_adherence_ART")));
+			prs.setNum_adherence_CTX(convertToString(load.get("num_adherence_CTX")));
+			prs.setNum_poor_ART(convertToString(load.get("num_poor_ART")));
+			prs.setNum_poor_CTX(convertToString(load.get("num_poor_CTX")));
+			prs.setNum_fair_ART(convertToString(load.get("num_fair_ART")));
+			prs.setNum_fair_CTX(convertToString(load.get("num_fair_CTX")));
+			prs.setN_tests_all(convertToString(load.get("n_tests_all")));
+			prs.setN_hvl_all(convertToString(load.get("n_hvl_all")));
+			prs.setN_tests_threeyears(convertToString(load.get("n_tests_threeyears")));
+			prs.setN_hvl_threeyears(convertToString(load.get("n_hvl_threeyears")));
+			prs.setTimeOnArt(convertToString(load.get("timeOnArt")));
+			prs.setAgeARTStart(convertToString(load.get("AgeARTStart")));
+			prs.setRecent_hvl_rate(convertToString(load.get("recent_hvl_rate")));
+			prs.setTotal_hvl_rate(convertToString(load.get("total_hvl_rate")));
+			prs.setArt_poor_adherence_rate(convertToString(load.get("art_poor_adherence_rate")));
+			prs.setArt_fair_adherence_rate(convertToString(load.get("art_fair_adherence_rate")));
+			prs.setCtx_poor_adherence_rate(convertToString(load.get("ctx_poor_adherence_rate")));
+			prs.setCtx_fair_adherence_rate(convertToString(load.get("ctx_fair_adherence_rate")));
+			prs.setUnscheduled_rate(convertToString(load.get("unscheduled_rate")));
+			prs.setAll_late30_rate(convertToString(load.get("all_late30_rate")));
+			prs.setAll_late5_rate(convertToString(load.get("all_late5_rate")));
+			prs.setAll_late1_rate(convertToString(load.get("all_late1_rate")));
+			prs.setRecent_late30_rate(convertToString(load.get("recent_late30_rate")));
+			prs.setRecent_late5_rate(convertToString(load.get("recent_late5_rate")));
+			prs.setRecent_late1_rate(convertToString(load.get("recent_late1_rate")));
+			prs.setGenderMale(convertToString(load.get("GenderMale")));
+			prs.setGenderFemale(convertToString(load.get("GenderFemale")));
+			prs.setPatientSourceCCC(convertToString(load.get("PatientSourceCCC")));
+			prs.setPatientSourceIPDAdult(convertToString(load.get("PatientSourceIPDAdult")));
+			prs.setPatientSourceMCH(convertToString(load.get("PatientSourceMCH")));
+			prs.setPatientSourceOPD(convertToString(load.get("PatientSourceOPD")));
+			prs.setPatientSourceOther(convertToString(load.get("PatientSourceOther")));
+			prs.setPatientSourceTBClinic(convertToString(load.get("PatientSourceTBClinic")));
+			prs.setPatientSourceVCT(convertToString(load.get("PatientSourceVCT")));
+			prs.setMaritalStatusDivorced(convertToString(load.get("MaritalStatusDivorced")));
+			prs.setMaritalStatusMarried(convertToString(load.get("MaritalStatusMarried")));
+			prs.setMaritalStatusOther(convertToString(load.get("MaritalStatusOther")));
+			prs.setMaritalStatusPolygamous(convertToString(load.get("MaritalStatusPolygamous")));
+			prs.setMaritalStatusSingle(convertToString(load.get("MaritalStatusSingle")));
+			prs.setMaritalStatusWidow(convertToString(load.get("MaritalStatusWidow")));
+			prs.setPopulationTypeGeneralPopulation(convertToString(load.get("PopulationTypeGeneralPopulation")));
+			prs.setPopulationTypeKeyPopulation(convertToString(load.get("PopulationTypeKeyPopulation")));
+			prs.setPopulationTypePriorityPopulation(convertToString(load.get("PopulationTypePriorityPopulation")));
+			prs.setTreatmentTypeART(convertToString(load.get("TreatmentTypeART")));
+			prs.setTreatmentTypePMTCT(convertToString(load.get("TreatmentTypePMTCT")));
+			prs.setOptimizedHIVRegimenNo(convertToString(load.get("OptimizedHIVRegimenNo")));
+			prs.setOptimizedHIVRegimenYes(convertToString(load.get("OptimizedHIVRegimenYes")));
+			prs.setOther_RegimenNo(convertToString(load.get("Other_RegimenNo")));
+			prs.setOther_RegimenYes(convertToString(load.get("Other_RegimenYes")));
+			prs.setPregnantNo(convertToString(load.get("PregnantNo")));
+			prs.setPregnantYes(convertToString(load.get("PregnantYes")));
+			prs.setPregnantNR(convertToString(load.get("PregnantNR")));
+			prs.setDifferentiatedCareCommunityARTDistributionHCWLed(convertToString(load.get("DifferentiatedCareCommunityARTDistributionHCWLed")));
+			prs.setDifferentiatedCareCommunityARTDistributionpeerled(convertToString(load.get("DifferentiatedCareCommunityARTDistributionpeerled")));
+			prs.setDifferentiatedCareFacilityARTdistributionGroup(convertToString(load.get("DifferentiatedCareFacilityARTdistributionGroup")));
+			prs.setDifferentiatedCareFastTrack(convertToString(load.get("DifferentiatedCareFastTrack")));
+			prs.setDifferentiatedCareStandardCare(convertToString(load.get("DifferentiatedCareStandardCare")));
+			prs.setMost_recent_art_adherencefair(convertToString(load.get("most_recent_art_adherencefair")));
+			prs.setMost_recent_art_adherencegood(convertToString(load.get("most_recent_art_adherencegood")));
+			prs.setMost_recent_art_adherencepoor(convertToString(load.get("most_recent_art_adherencepoor")));
+			prs.setMost_recent_ctx_adherencefair(convertToString(load.get("most_recent_ctx_adherencefair")));
+			prs.setMost_recent_ctx_adherencegood(convertToString(load.get("most_recent_ctx_adherencegood")));
+			prs.setMost_recent_ctx_adherencepoor(convertToString(load.get("most_recent_ctx_adherencepoor")));
+			prs.setStabilityAssessmentStable(convertToString(load.get("StabilityAssessmentStable")));
+			prs.setStabilityAssessmentUnstable(convertToString(load.get("StabilityAssessmentUnstable")));
+			prs.setMost_recent_vlHVL(convertToString(load.get("most_recent_vlHVL")));
+			prs.setMost_recent_vlLVL(convertToString(load.get("most_recent_vlLVL")));
+			prs.setMost_recent_vlSuppressed(convertToString(load.get("most_recent_vlSuppressed")));
+			prs.setLabel(convertToString(load.get("label")));
+		} catch(Exception ex) {
+			System.err.println("IIT ML: Got error inserting debug variables to DB: " + ex.getMessage());
+			ex.printStackTrace();
+		}
+
+		return(prs);
+	}
+
+	/**
+	 * Converts any input object into a string and returns "" if it is not possible
+	 * @param input -- input Object
+	 * @return String
+	 */
+	private String convertToString(Object input) {
+		if (input == null) {
+			return "";
+		}
+	
+		if (input instanceof String || input instanceof Integer || input instanceof Double ||
+			input instanceof Long || input instanceof Float) {
+			return input.toString();
+		}
+	
+		return "";
 	}
 
 	/**
