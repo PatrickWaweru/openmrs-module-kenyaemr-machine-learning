@@ -5,6 +5,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.codehaus.jackson.node.ObjectNode;
 import org.json.simple.JSONObject;
+import org.openmrs.module.kenyaemr.reporting.data.converter.definition.AppointmentDaysMissedDataDefinition;
 import org.openmrs.module.kenyaemrml.api.MLUtils;
 import org.openmrs.module.kenyaemrml.api.ModelService;
 import org.openmrs.module.kenyaemrml.domain.ModelInputFields;
@@ -19,18 +20,26 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.openmrs.module.kenyaemrml.iit.Appointment;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
-
+import java.sql.CallableStatement;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import org.openmrs.Patient;
 import org.openmrs.Visit;
+import org.openmrs.api.AdministrationService;
 import org.openmrs.api.context.Context;
+import org.openmrs.api.db.hibernate.DbSessionFactory;
 import org.openmrs.module.kenyaemrml.api.MLinKenyaEMRService;
 import org.openmrs.module.kenyaemrml.iit.PatientRiskScore;
 import org.openmrs.module.kenyaui.KenyaUiUtils;
@@ -41,6 +50,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import org.codehaus.jackson.map.ObjectMapper;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * The main controller for ML in KenyaEMR
@@ -418,6 +432,317 @@ public class MachineLearningRestController extends BaseRestController {
 		}
 	}
 
+	@RequestMapping(method = RequestMethod.POST, value = "/testiit")
+	@ResponseBody
+	public Object variableTest(HttpServletRequest request) {
+		try {
+			// Patient 9895
+			long startTime = System.currentTimeMillis();
+			long stopTime = 0L;
+			long startMemory = getMemoryConsumption();
+			long stopMemory = 0L;
+			AdministrationService administrationService = Context.getAdministrationService();
+			System.err.println("IIT ML: Start IIT ML TEST: " + new Date());
+			//Start Appointments
+			// administrationService.executeSQL("CALL sp_populate_dwapi_patient_demographics()", false);
+			// administrationService.executeSQL("CALL sp_populate_dwapi_hiv_followup()", false);
+			// administrationService.executeSQL("CALL sp_populate_dwapi_patient_triage()", false);
+			// administrationService.executeSQL("CALL sp_populate_dwapi_drug_event()", false);
+			// administrationService.executeSQL("CALL sp_populate_dwapi_pharmacy_extract()", false);
+			// administrationService.executeSQL("CALL sp_populate_dwapi_drug_event()", false);
+			// administrationService.executeSQL("CALL sp_populate_dwapi_drug_order()", false);
+
+			String visitsQuery = "CALL sp_get_visits()";
+
+			String pharmacyQuery = "CALL sp_get_pharmacy_visits()";
+
+			List<List<Object>> visits = administrationService.executeSQL(visitsQuery, false); // PatientPK, VisitDate, NextAppointmentDate
+			List<List<Object>> pharmacy = administrationService.executeSQL(pharmacyQuery, false); // PatientPK, DispenseDate, ExpectedReturn
+
+			System.err.println("IIT ML: Got visits: " + visits.size());
+			System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
+			// January 2019 reference date
+			Date jan2019 = new Date(119, 0, 1);
+			Date now = new Date();
+
+			// Now that we have visits and pharmacy we can filter the data and apply logic
+
+			//Visits
+			Set<Appointment> visitAppts = new HashSet<>();
+			for(List<Object> ls : visits) {
+				// If NextAppointmentDate is null, dispose it
+				if(ls.get(0) != null && ls.get(1) != null && ls.get(2) != null) {
+					if(ls.get(0) instanceof Integer && ls.get(1) instanceof Date && ls.get(2) instanceof Date) {
+						// check that the date is after jan 2019
+						if(((Date)ls.get(1)).after(jan2019) && ((Date)ls.get(2)).after(jan2019)) {
+							// check that appointment is less than 365 days from encounter date
+							// Calculate the difference in milliseconds
+							long differenceInMillis = ((Date)ls.get(2)).getTime() - ((Date)ls.get(1)).getTime();
+							// Convert milliseconds to days
+							long differenceInDays = differenceInMillis / (24 * 60 * 60 * 1000);
+							if (differenceInDays < 365) {
+								// Ensure appointment day is after encounter day
+								if(((Date)ls.get(2)).after(((Date)ls.get(1)))) {
+									Appointment visit = new Appointment();
+									visit.setPatientID((Integer) ls.get(0));
+									visit.setEncounterDate((Date) ls.get(1));
+									visit.setAppointmentDate((Date) ls.get(2));
+									visitAppts.add(visit);
+								} else {
+									System.err.println("IIT ML: appointment before encounter record rejected: " + ls);
+								}
+							} else {
+								System.err.println("IIT ML: 365 days record rejected: " + ls);
+							}
+						} else {
+							System.err.println("IIT ML: 2019 record rejected: " + ls);
+						}
+					}
+				}
+			}
+			System.err.println("IIT ML: visits before: " + visitAppts.size());
+			processRecords(visitAppts);
+
+			//Pharmacy
+			Set<Appointment> pharmAppts = new HashSet<>();
+			for(List<Object> ls : pharmacy) {
+				// patientid and encounter date should never be null
+				if(ls.get(0) != null && ls.get(1) != null && ls.get(2) != null) {
+					// if appointment date is null set a new date 30 days after encounter
+					if(ls.get(2) == null) {
+						// Create a Calendar instance
+						Calendar calendar = Calendar.getInstance();
+						calendar.setTime((Date)ls.get(1));
+						// Add 30 days
+						calendar.add(Calendar.DAY_OF_MONTH, 30);
+						// Get the new Date
+						Date newAppt = calendar.getTime();
+						ls.set(2, newAppt);
+					}
+					if(ls.get(0) instanceof Integer && ls.get(1) instanceof Date && ls.get(2) instanceof Date) {
+						// check that the date is after jan 2019
+						if(((Date)ls.get(1)).after(jan2019) && ((Date)ls.get(2)).after(jan2019)) {
+							// check that appointment is less than 365 days from today
+							// Calculate the difference in milliseconds
+							long differenceInMillis = ((Date)ls.get(2)).getTime() - ((Date)ls.get(1)).getTime();
+							// Convert milliseconds to days
+							long differenceInDays = differenceInMillis / (24 * 60 * 60 * 1000);
+							if (differenceInDays >= 365) {
+								// Create a Calendar instance
+								Calendar calendar = Calendar.getInstance();
+								calendar.setTime((Date)ls.get(1));
+								// Add 30 days
+								calendar.add(Calendar.DAY_OF_MONTH, 30);
+								// Get the new Date
+								Date newAppt = calendar.getTime();
+								ls.set(2, newAppt);
+							}
+							// If appointment day is before encounter day, set appointment to be after 30 days
+							if(((Date)ls.get(1)).after(((Date)ls.get(2)))) {
+								// Create a Calendar instance
+								Calendar calendar = Calendar.getInstance();
+								calendar.setTime((Date)ls.get(1));
+								// Add 30 days
+								calendar.add(Calendar.DAY_OF_MONTH, 30);
+								// Get the new Date
+								Date newAppt = calendar.getTime();
+								ls.set(2, newAppt);
+							}
+
+							Appointment visit = new Appointment();
+							visit.setPatientID((Integer) ls.get(0));
+							visit.setEncounterDate((Date) ls.get(1));
+							visit.setAppointmentDate((Date) ls.get(2));
+							pharmAppts.add(visit);
+
+						}
+					}
+				}
+			}
+			System.err.println("IIT ML: pharmacy before: " + pharmAppts.size());
+			processRecords(pharmAppts);
+
+			System.err.println("IIT ML: Got Filtered visits: " + visitAppts.size());
+			System.err.println("IIT ML: Got Filtered pharmacy: " + pharmAppts.size());
+
+			//Combine the two sets
+			visitAppts.addAll(pharmAppts);
+			System.err.println("IIT ML: Prepared appointments before: " + visitAppts.size());
+			processRecords(visitAppts);
+
+			System.err.println("IIT ML: Final appointments (n_appts): " + visitAppts.size());
+
+			List<Appointment> sortedRecords = sortAppointmentsByEncounterDate(visitAppts);
+			List<Integer> missedRecord = calculateLateness(sortedRecords);
+
+			System.err.println("IIT ML: Missed before: " + missedRecord);
+
+			Integer missed1 = getMissed1(missedRecord);
+			System.err.println("IIT ML: Missed by at least one (missed1): " + missed1);
+
+			Integer missed5 = getMissed5(missedRecord);
+			System.err.println("IIT ML: Missed by at least five (missed5): " + missed5);
+
+			Integer missed30 = getMissed30(missedRecord);
+			System.err.println("IIT ML: Missed by at least thirty (missed30): " + missed30);
+
+			Integer missed1Last5 = getMissed1Last5(missedRecord);
+			System.err.println("IIT ML: Missed by at least one in the latest 5 appointments (missed1_Last5): " + missed1Last5);
+
+			Integer missed5Last5 = getMissed5Last5(missedRecord);
+			System.err.println("IIT ML: Missed by at least five in the latest 5 appointments (missed5_Last5): " + missed5Last5);
+
+			Integer missed30Last5 = getMissed30Last5(missedRecord);
+			System.err.println("IIT ML: Missed by at least thirty in the latest 5 appointments (missed30_Last5): " + missed30Last5);
+
+			//End Appointments
+			System.err.println("IIT ML: END IIT ML TEST: " + new Date());
+
+			stopTime = System.currentTimeMillis();
+			long elapsedTime = stopTime - startTime;
+			System.out.println("IIT ML: Time taken: " + elapsedTime);
+			System.out.println("IIT ML: Time taken sec: " + elapsedTime / 1000);
+
+			stopMemory = getMemoryConsumption();
+			long usedMemory = stopMemory - startMemory;
+			System.out.println("IIT ML: Memory used: " + usedMemory);
+
+			// We got the final table
+			System.err.println("IIT ML: Table: " + visitAppts);
+
+			return(new SimpleObject());
+		}
+		catch (Exception e) {
+			System.err.println("IIT ML ERROR: " + e.getMessage());
+			e.printStackTrace();
+			return new ResponseEntity<Object>("Could not process the IIT Test", new HttpHeaders(), HttpStatus.UNPROCESSABLE_ENTITY);
+		}
+	}
+
+	private Integer getMissed1(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			for (Integer in : missed) {
+				if (in >= 1) {
+					ret++;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMissed5(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			for (Integer in : missed) {
+				if (in >= 5) {
+					ret++;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMissed30(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			for (Integer in : missed) {
+				if (in >= 30) {
+					ret++;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMissed1Last5(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			int size = missed.size();
+			List<Integer> subList = missed.subList(Math.max(size - 5, 0), size);
+			for (Integer in : subList) {
+				if (in >= 1) {
+					ret++;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMissed5Last5(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			int size = missed.size();
+			List<Integer> subList = missed.subList(Math.max(size - 5, 0), size);
+			for (Integer in : subList) {
+				if (in >= 5) {
+					ret++;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMissed30Last5(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			int size = missed.size();
+			List<Integer> subList = missed.subList(Math.max(size - 5, 0), size);
+			for (Integer in : subList) {
+				if (in >= 30) {
+					ret++;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	static List<Integer> calculateLateness(List<Appointment> records) {
+		List<Integer> dateDifferences = new ArrayList<>();
+
+		for (int i = 0; i < records.size() - 1; i++) {
+			Appointment currentRecord = records.get(i);
+			Appointment nextRecord = records.get(i + 1);
+
+			long differenceInMilliseconds = nextRecord.getEncounterDate().getTime() - currentRecord.getAppointmentDate().getTime();
+			int differenceInDays = (int) (differenceInMilliseconds / (24 * 60 * 60 * 1000));
+
+			dateDifferences.add(differenceInDays);
+		}
+
+		return dateDifferences;
+	}
+
+	static List<Appointment> sortAppointmentsByEncounterDate(Set<Appointment> records) {
+		List<Appointment> sortedRecords = new ArrayList<>(records);
+		sortedRecords.sort(Comparator.comparing(Appointment::getEncounterDate));
+		return sortedRecords;
+	}
+
+	static void processRecords(Set<Appointment> records) {
+		Map<Date, Appointment> resultMap = new HashMap<>();
+
+		for (Appointment record : records) {
+			if (!resultMap.containsKey(record.getEncounterDate()) || record.getAppointmentDate().after(resultMap.get(record.getEncounterDate()).getAppointmentDate())) {
+				resultMap.put(record.getEncounterDate(), record);
+			}
+		}
+
+		records.clear();
+		records.addAll(resultMap.values());
+	}
+
+	static void processRecords1(Set<Appointment> records) {
+		records = records.stream()
+				.collect(Collectors.toMap(
+						record -> record.getPatientID() + "-" + record.getEncounterDate(),
+						Function.identity(),
+						(record1, record2) -> record1.getEncounterDate().after(record2.getEncounterDate()) ? record1 : record2
+				))
+				.values().stream()
+				.collect(Collectors.toSet());
+	}
+
 	/**
 	 * Generates a new risk score for the patient and saves it into DB
 	 * //Query JSON
@@ -451,4 +776,41 @@ public class MachineLearningRestController extends BaseRestController {
 			return new ResponseEntity<Object>("Could not process the patient IIT Score request", new HttpHeaders(), HttpStatus.UNPROCESSABLE_ENTITY);
 		}
 	}
+
+	/**
+	 * Get the current memory consumption in MB
+	 * @return long - the RAM usage in MB
+	 */
+	private long getMemoryConsumption() {
+		long ret = 0L;
+		final long MEGABYTE = 1024L * 1024L;
+
+		// Get the Java runtime
+        Runtime runtime = Runtime.getRuntime();
+        // Run the garbage collector
+        runtime.gc();
+        // Calculate the used memory
+        long memory = runtime.totalMemory() - runtime.freeMemory();
+        System.out.println("Used memory is bytes: " + memory);
+
+		// get the MB
+		ret = memory / MEGABYTE;
+        System.out.println("Used memory is megabytes: " + ret);
+
+		return(ret);
+	}
+
+	/**
+	 * 
+	 * @param dateString
+	 * @return
+	 */
+	public static LocalDateTime convertStringToDate(String dateString) {
+        try {
+            return LocalDateTime.parse(dateString);
+        } catch (Exception e) {
+            // Conversion failed, return null
+            return null;
+        }
+    }
 }
