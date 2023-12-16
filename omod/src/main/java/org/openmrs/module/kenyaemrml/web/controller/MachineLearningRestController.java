@@ -4,12 +4,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.codehaus.jackson.node.ObjectNode;
+import org.jfree.data.time.Month;
 import org.json.simple.JSONObject;
 import org.openmrs.module.kenyaemr.reporting.data.converter.definition.AppointmentDaysMissedDataDefinition;
 import org.openmrs.module.kenyaemrml.api.MLUtils;
 import org.openmrs.module.kenyaemrml.api.ModelService;
 import org.openmrs.module.kenyaemrml.domain.ModelInputFields;
 import org.openmrs.module.kenyaemrml.domain.ScoringResult;
+import org.openmrs.module.kenyaemrml.iit.Treatment;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
@@ -26,13 +28,22 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.sql.CallableStatement;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 
 import org.openmrs.Patient;
@@ -51,6 +62,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import java.time.LocalDateTime;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
@@ -436,180 +448,433 @@ public class MachineLearningRestController extends BaseRestController {
 	@ResponseBody
 	public Object variableTest(HttpServletRequest request) {
 		try {
-			// Patient 9895
-			long startTime = System.currentTimeMillis();
-			long stopTime = 0L;
-			long startMemory = getMemoryConsumption();
-			long stopMemory = 0L;
-			AdministrationService administrationService = Context.getAdministrationService();
-			System.err.println("IIT ML: Start IIT ML TEST: " + new Date());
-			//Start Appointments
-			// administrationService.executeSQL("CALL sp_populate_dwapi_patient_demographics()", false);
-			// administrationService.executeSQL("CALL sp_populate_dwapi_hiv_followup()", false);
-			// administrationService.executeSQL("CALL sp_populate_dwapi_patient_triage()", false);
-			// administrationService.executeSQL("CALL sp_populate_dwapi_drug_event()", false);
-			// administrationService.executeSQL("CALL sp_populate_dwapi_pharmacy_extract()", false);
-			// administrationService.executeSQL("CALL sp_populate_dwapi_drug_event()", false);
-			// administrationService.executeSQL("CALL sp_populate_dwapi_drug_order()", false);
+			List<Integer> patients = Arrays.asList(6559, 9261, 9800, 9895, 10705, 15219, 15361, 15723, 16712, 16856, 34089);
+			for(Integer patientID : patients) {
+				try {
+					// REF: https://github.com/palladiumkenya/DWAPI-Queries/blob/dwapi-etl/DWAPI_New_Extracts/Patient.sql
+					// REF: https://raw.githubusercontent.com/palladiumkenya/DWAPI-Queries/dwapi-etl/DWAPI_New_Extracts/PatientsVisit.sql
+					// REF: https://raw.githubusercontent.com/palladiumkenya/DWAPI-Queries/dwapi-etl/DWAPI_New_Extracts/PatientPharmacy.sql
+					// Patient 9895
+					long startTime = System.currentTimeMillis();
+					long stopTime = 0L;
+					long startMemory = getMemoryConsumption();
+					long stopMemory = 0L;
+					AdministrationService administrationService = Context.getAdministrationService();
+					System.err.println("*************************************************************************");
+					System.err.println("IIT ML: Start IIT ML TEST: " + new Date());
+					//Start Appointments
+					// administrationService.executeSQL("CALL sp_populate_dwapi_patient_demographics()", false);
+					// administrationService.executeSQL("CALL sp_populate_dwapi_hiv_followup()", false);
+					// administrationService.executeSQL("CALL sp_populate_dwapi_patient_triage()", false);
+					// administrationService.executeSQL("CALL sp_populate_dwapi_drug_event()", false);
+					// administrationService.executeSQL("CALL sp_populate_dwapi_pharmacy_extract()", false);
+					// administrationService.executeSQL("CALL sp_populate_dwapi_drug_event()", false);
+					// administrationService.executeSQL("CALL sp_populate_dwapi_drug_order()", false);
 
-			String visitsQuery = "CALL sp_get_visits()";
+					String visitsQuery = "CALL sp_iitml_get_visits(" + patientID + ")";
 
-			String pharmacyQuery = "CALL sp_get_pharmacy_visits()";
+					String pharmacyQuery = "CALL sp_iitml_get_pharmacy_visits(" + patientID + ")";
 
-			List<List<Object>> visits = administrationService.executeSQL(visitsQuery, false); // PatientPK, VisitDate, NextAppointmentDate
-			List<List<Object>> pharmacy = administrationService.executeSQL(pharmacyQuery, false); // PatientPK, DispenseDate, ExpectedReturn
+					String demographicsQuery = "CALL sp_iitml_get_patient_demographics(" + patientID + ")";
 
-			System.err.println("IIT ML: Got visits: " + visits.size());
-			System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
-			// January 2019 reference date
-			Date jan2019 = new Date(119, 0, 1);
-			Date now = new Date();
+					List<List<Object>> visits = administrationService
+							.executeSQL(visitsQuery, true); // PatientPK(0), VisitDate(1), NextAppointmentDate(2), VisitType(3), Height(4), Weight(5),
+							// Pregnant(6), DiffentiatedCare(7), StabilityAssessment(8), Adherence(9), WhoStage(10), BreastFeeding(11)
+					List<List<Object>> pharmacy = administrationService
+							.executeSQL(pharmacyQuery,
+									true); // PatientPK(0), DispenseDate(1), ExpectedReturn(2), Drug(3), TreatmentType(4)
+					List<List<Object>> demographics = administrationService
+							.executeSQL(demographicsQuery,
+									true); // PatientPK(0), Gender, PatientSource, MaritalStatus, Age, PopulationType
 
-			// Now that we have visits and pharmacy we can filter the data and apply logic
+					System.err.println("IIT ML: Got visits: " + visits.size());
+					System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
+					System.err.println("IIT ML: Got demographics: " + demographics.size());
+					// January 2019 reference date
+					Date jan2019 = new Date(119, 0, 1);
+					Date now = new Date();
 
-			//Visits
-			Set<Appointment> visitAppts = new HashSet<>();
-			for(List<Object> ls : visits) {
-				// If NextAppointmentDate is null, dispose it
-				if(ls.get(0) != null && ls.get(1) != null && ls.get(2) != null) {
-					if(ls.get(0) instanceof Integer && ls.get(1) instanceof Date && ls.get(2) instanceof Date) {
-						// check that the date is after jan 2019
-						if(((Date)ls.get(1)).after(jan2019) && ((Date)ls.get(2)).after(jan2019)) {
-							// check that appointment is less than 365 days from encounter date
-							// Calculate the difference in milliseconds
-							long differenceInMillis = ((Date)ls.get(2)).getTime() - ((Date)ls.get(1)).getTime();
-							// Convert milliseconds to days
-							long differenceInDays = differenceInMillis / (24 * 60 * 60 * 1000);
-							if (differenceInDays < 365) {
-								// Ensure appointment day is after encounter day
-								if(((Date)ls.get(2)).after(((Date)ls.get(1)))) {
+					// Now that we have visits and pharmacy we can filter the data and apply logic
+
+					// Lateness Section
+					//Visits
+					Set<Appointment> visitAppts = new HashSet<>();
+					for (List<Object> ls : visits) {
+						// If NextAppointmentDate is null, dispose it
+						if (ls.get(0) != null && ls.get(1) != null && ls.get(2) != null) {
+							if (ls.get(0) instanceof Integer && ls.get(1) instanceof Date && ls.get(2) instanceof Date) {
+								// check that the date is after jan 2019
+								if (((Date) ls.get(1)).after(jan2019) && ((Date) ls.get(2)).after(jan2019)) {
+									// check that appointment is less than 365 days from encounter date
+									// Calculate the difference in milliseconds
+									long differenceInMillis = ((Date) ls.get(2)).getTime() - ((Date) ls.get(1)).getTime();
+									// Convert milliseconds to days
+									long differenceInDays = differenceInMillis / (24 * 60 * 60 * 1000);
+									if (differenceInDays < 365) {
+										// Ensure appointment day is after encounter day
+										if (((Date) ls.get(2)).after(((Date) ls.get(1)))) {
+											Appointment visit = new Appointment();
+											visit.setPatientID((Integer) ls.get(0));
+											visit.setEncounterDate((Date) ls.get(1));
+											visit.setAppointmentDate((Date) ls.get(2));
+											visitAppts.add(visit);
+										} else {
+											System.err
+													.println("IIT ML: appointment before encounter record rejected: " + ls);
+										}
+									} else {
+										System.err.println("IIT ML: 365 days record rejected: " + ls);
+									}
+								} else {
+									System.err.println("IIT ML: 2019 record rejected: " + ls);
+								}
+							}
+						}
+					}
+					System.err.println("IIT ML: visits before: " + visitAppts.size());
+					processRecords(visitAppts);
+
+					//Pharmacy
+					Set<Appointment> pharmAppts = new HashSet<>();
+					for (List<Object> ls : pharmacy) {
+						// patientid and encounter date should never be null
+						if (ls.get(0) != null && ls.get(1) != null && ls.get(2) != null) {
+							// if appointment date is null set a new date 30 days after encounter
+							if (ls.get(2) == null) {
+								// Create a Calendar instance
+								Calendar calendar = Calendar.getInstance();
+								calendar.setTime((Date) ls.get(1));
+								// Add 30 days
+								calendar.add(Calendar.DAY_OF_MONTH, 30);
+								// Get the new Date
+								Date newAppt = calendar.getTime();
+								ls.set(2, newAppt);
+							}
+							if (ls.get(0) instanceof Integer && ls.get(1) instanceof Date && ls.get(2) instanceof Date) {
+								// check that the date is after jan 2019
+								if (((Date) ls.get(1)).after(jan2019) && ((Date) ls.get(2)).after(jan2019)) {
+									// check that appointment is less than 365 days from today
+									// Calculate the difference in milliseconds
+									long differenceInMillis = ((Date) ls.get(2)).getTime() - ((Date) ls.get(1)).getTime();
+									// Convert milliseconds to days
+									long differenceInDays = differenceInMillis / (24 * 60 * 60 * 1000);
+									if (differenceInDays >= 365) {
+										// Create a Calendar instance
+										Calendar calendar = Calendar.getInstance();
+										calendar.setTime((Date) ls.get(1));
+										// Add 30 days
+										calendar.add(Calendar.DAY_OF_MONTH, 30);
+										// Get the new Date
+										Date newAppt = calendar.getTime();
+										ls.set(2, newAppt);
+									}
+									// If appointment day is before encounter day, set appointment to be after 30 days
+									if (((Date) ls.get(1)).after(((Date) ls.get(2)))) {
+										// Create a Calendar instance
+										Calendar calendar = Calendar.getInstance();
+										calendar.setTime((Date) ls.get(1));
+										// Add 30 days
+										calendar.add(Calendar.DAY_OF_MONTH, 30);
+										// Get the new Date
+										Date newAppt = calendar.getTime();
+										ls.set(2, newAppt);
+									}
+
 									Appointment visit = new Appointment();
 									visit.setPatientID((Integer) ls.get(0));
 									visit.setEncounterDate((Date) ls.get(1));
 									visit.setAppointmentDate((Date) ls.get(2));
-									visitAppts.add(visit);
-								} else {
-									System.err.println("IIT ML: appointment before encounter record rejected: " + ls);
+									pharmAppts.add(visit);
+
 								}
-							} else {
-								System.err.println("IIT ML: 365 days record rejected: " + ls);
 							}
-						} else {
-							System.err.println("IIT ML: 2019 record rejected: " + ls);
 						}
 					}
-				}
-			}
-			System.err.println("IIT ML: visits before: " + visitAppts.size());
-			processRecords(visitAppts);
+					System.err.println("IIT ML: pharmacy before: " + pharmAppts.size());
+					processRecords(pharmAppts);
 
-			//Pharmacy
-			Set<Appointment> pharmAppts = new HashSet<>();
-			for(List<Object> ls : pharmacy) {
-				// patientid and encounter date should never be null
-				if(ls.get(0) != null && ls.get(1) != null && ls.get(2) != null) {
-					// if appointment date is null set a new date 30 days after encounter
-					if(ls.get(2) == null) {
-						// Create a Calendar instance
-						Calendar calendar = Calendar.getInstance();
-						calendar.setTime((Date)ls.get(1));
-						// Add 30 days
-						calendar.add(Calendar.DAY_OF_MONTH, 30);
-						// Get the new Date
-						Date newAppt = calendar.getTime();
-						ls.set(2, newAppt);
-					}
-					if(ls.get(0) instanceof Integer && ls.get(1) instanceof Date && ls.get(2) instanceof Date) {
-						// check that the date is after jan 2019
-						if(((Date)ls.get(1)).after(jan2019) && ((Date)ls.get(2)).after(jan2019)) {
-							// check that appointment is less than 365 days from today
-							// Calculate the difference in milliseconds
-							long differenceInMillis = ((Date)ls.get(2)).getTime() - ((Date)ls.get(1)).getTime();
-							// Convert milliseconds to days
-							long differenceInDays = differenceInMillis / (24 * 60 * 60 * 1000);
-							if (differenceInDays >= 365) {
-								// Create a Calendar instance
-								Calendar calendar = Calendar.getInstance();
-								calendar.setTime((Date)ls.get(1));
-								// Add 30 days
-								calendar.add(Calendar.DAY_OF_MONTH, 30);
-								// Get the new Date
-								Date newAppt = calendar.getTime();
-								ls.set(2, newAppt);
-							}
-							// If appointment day is before encounter day, set appointment to be after 30 days
-							if(((Date)ls.get(1)).after(((Date)ls.get(2)))) {
-								// Create a Calendar instance
-								Calendar calendar = Calendar.getInstance();
-								calendar.setTime((Date)ls.get(1));
-								// Add 30 days
-								calendar.add(Calendar.DAY_OF_MONTH, 30);
-								// Get the new Date
-								Date newAppt = calendar.getTime();
-								ls.set(2, newAppt);
-							}
+					System.err.println("IIT ML: Got Filtered visits: " + visitAppts.size());
+					System.err.println("IIT ML: Got Filtered pharmacy: " + pharmAppts.size());
 
-							Appointment visit = new Appointment();
-							visit.setPatientID((Integer) ls.get(0));
-							visit.setEncounterDate((Date) ls.get(1));
-							visit.setAppointmentDate((Date) ls.get(2));
-							pharmAppts.add(visit);
+					//Combine the two sets
+					Set<Appointment> allAppts = new HashSet<>();
+					allAppts.addAll(visitAppts);
+					allAppts.addAll(pharmAppts);
+					System.err.println("IIT ML: Prepared appointments before: " + allAppts.size());
+					processRecords(allAppts);
 
+					// New model (n_appts)
+					System.err.println("IIT ML: Final appointments (n_appts): " + allAppts.size());
+
+					List<Appointment> sortedVisits = sortAppointmentsByEncounterDate(visitAppts);
+					List<Appointment> sortedRecords = sortAppointmentsByEncounterDate(allAppts);
+					List<Integer> missedRecord = calculateLateness(sortedRecords);
+
+					System.err.println("IIT ML: Missed before: " + missedRecord);
+
+					Integer missed1 = getMissed1(missedRecord);
+					System.err.println("IIT ML: Missed by at least one (missed1): " + missed1);
+
+					Integer missed5 = getMissed5(missedRecord);
+					System.err.println("IIT ML: Missed by at least five (missed5): " + missed5);
+
+					Integer missed30 = getMissed30(missedRecord);
+					System.err.println("IIT ML: Missed by at least thirty (missed30): " + missed30);
+
+					Integer missed1Last5 = getMissed1Last5(missedRecord);
+					System.err.println(
+							"IIT ML: Missed by at least one in the latest 5 appointments (missed1_Last5): " + missed1Last5);
+
+					Integer missed5Last5 = getMissed5Last5(missedRecord);
+					System.err.println(
+							"IIT ML: Missed by at least five in the latest 5 appointments (missed5_Last5): " + missed5Last5);
+
+					Integer missed30Last5 = getMissed30Last5(missedRecord);
+					System.err.println(
+							"IIT ML: Missed by at least thirty in the latest 5 appointments (missed30_Last5): "
+									+ missed30Last5);
+
+					/**
+					 * New Model 13/12/2023
+					 * Based on the Visits table only
+					 * late
+					 * late28
+					 * average_lateness
+					 * late_rate
+					 * late28_rate
+					 * visit_1
+					 * visit_2
+					 * visit_3
+					 * visit_4
+					 * visit_5
+					 * late_last10
+					 * NextAppointmentDate
+					 * late_last3
+					 * averagelateness_last3
+					 * averagelateness_last10
+					 * late_last5
+					 * averagelateness_last5
+					 * average_tca_last5
+					 */
+
+					// New model (late)
+					System.err.println("IIT ML: new model (late): " + missed1);
+
+					// New model (late28)
+					Integer late28 = getLate28(missedRecord);
+					System.err.println("IIT ML: new model (late28): " + late28);
+
+					// New model (averagelateness)
+					System.err.println(
+							"IIT ML: new model (averagelateness): " + getAverageLateness(missedRecord, allAppts.size()));
+
+					// New model (late_rate)
+					System.err.println("IIT ML: new model (late_rate): " + getLateRate(missed1, allAppts.size()));
+
+					// New model (late28_rate)
+					System.err.println("IIT ML: new model (late_rate): " + getLate28Rate(late28, allAppts.size()));
+
+					// New model (visit_1)
+					System.err.println("IIT ML: new model (visit_1): " + getVisit1(missedRecord));
+
+					// New model (visit_2)
+					System.err.println("IIT ML: new model (visit_2): " + getVisit2(missedRecord));
+
+					// New model (visit_3)
+					System.err.println("IIT ML: new model (visit_3): " + getVisit3(missedRecord));
+
+					// New model (visit_4)
+					System.err.println("IIT ML: new model (visit_4): " + getVisit4(missedRecord));
+
+					// New model (visit_5)
+					System.err.println("IIT ML: new model (visit_5): " + getVisit5(missedRecord));
+
+					// New model (late_last10)
+					System.err.println("IIT ML: new model (late_last10): " + getLateLast10(missedRecord));
+
+					// New model (NextAppointmentDate)
+					System.err.println("IIT ML: new model (NextAppointmentDate): " + getNextAppointmentDate(sortedRecords));
+
+					// New model (late_last3)
+					System.err.println("IIT ML: new model (late_last3): " + getLateLast3(missedRecord));
+
+					// New model (averagelateness_last3)
+					System.err
+							.println("IIT ML: new model (averagelateness_last3): " + getAverageLatenessLast3(missedRecord));
+
+					// New model (averagelateness_last10)
+					System.err.println(
+							"IIT ML: new model (averagelateness_last10): " + getAverageLatenessLast10(missedRecord));
+
+					// New model (late_last5)
+					System.err.println("IIT ML: new model (late_last5): " + getLateLast5(missedRecord));
+
+					// New model (averagelateness_last5)
+					System.err
+							.println("IIT ML: new model (averagelateness_last5): " + getAverageLatenessLast5(missedRecord));
+
+					// New model (average_tca_last5)
+					System.err.println("IIT ML: new model (average_tca_last5): " + getAverageTCALast5(sortedRecords));
+
+					// New model (unscheduled_rate_last5)
+					System.err.println("IIT ML: new model (unscheduled_rate_last5): " + getUnscheduledRateLast5(visits));
+
+					// New model (MonthApr)
+					System.err.println("IIT ML: new model (MonthApr): " + getMonthApr(sortedRecords));
+
+					// New model (MonthAug)
+					System.err.println("IIT ML: new model (MonthAug): " + getMonthAug(sortedRecords));
+
+					// New model (MonthDec)
+					System.err.println("IIT ML: new model (MonthDec): " + getMonthDec(sortedRecords));
+
+					// New model (MonthFeb)
+					System.err.println("IIT ML: new model (MonthFeb): " + getMonthFeb(sortedRecords));
+
+					// New model (MonthJan)
+					System.err.println("IIT ML: new model (MonthJan): " + getMonthJan(sortedRecords));
+
+					// New model (MonthJul)
+					System.err.println("IIT ML: new model (MonthJul): " + getMonthJul(sortedRecords));
+
+					// New model (MonthJun)
+					System.err.println("IIT ML: new model (MonthJun): " + getMonthJun(sortedRecords));
+
+					// New model (MonthMar)
+					System.err.println("IIT ML: new model (MonthMar): " + getMonthMar(sortedRecords));
+
+					// New model (MonthMay)
+					System.err.println("IIT ML: new model (MonthMay): " + getMonthMay(sortedRecords));
+
+					// New model (MonthNov)
+					System.err.println("IIT ML: new model (MonthNov): " + getMonthNov(sortedRecords));
+
+					// New model (MonthOct)
+					System.err.println("IIT ML: new model (MonthOct): " + getMonthOct(sortedRecords));
+
+					// New model (MonthSep)
+					System.err.println("IIT ML: new model (MonthSep): " + getMonthSep(sortedRecords));
+
+					// New model (DayFri)
+					System.err.println("IIT ML: new model (DayFri): " + getDayFri(sortedRecords));
+
+					// New model (DayMon)
+					System.err.println("IIT ML: new model (DayMon): " + getDayMon(sortedRecords));
+
+					// New model (DaySat)
+					System.err.println("IIT ML: new model (DaySat): " + getDaySat(sortedRecords));
+
+					// New model (DaySun)
+					System.err.println("IIT ML: new model (DaySun): " + getDaySun(sortedRecords));
+
+					// New model (DayThu)
+					System.err.println("IIT ML: new model (DayThu): " + getDayThu(sortedRecords));
+
+					// New model (DayTue)
+					System.err.println("IIT ML: new model (DayTue): " + getDayTue(sortedRecords));
+
+					// New model (DayWed)
+					System.err.println("IIT ML: new model (DayWed): " + getDayWed(sortedRecords));
+
+					// End new model
+
+					// (Weight)
+					Double weight = getWeight(visits);
+					System.err.println("IIT ML: (Weight): " + weight);
+
+					// (Height)
+					Double height = getHeight(visits);
+					System.err.println("IIT ML: (Height): " + height);
+
+					// (BMI) -- NB: If zero, return NA
+					System.err.println("IIT ML: (BMI): " + getBMI(height, weight));
+
+					// (GenderFemale)
+					System.err.println("IIT ML: (GenderFemale): " + getGenderFemale(demographics));
+
+					// (GenderMale)
+					System.err.println("IIT ML: (GenderMale): " + getGenderMale(demographics));
+
+					// (PatientSourceOPD)
+					System.err.println("IIT ML: (PatientSourceOPD): " + getPatientSourceOPD(demographics));
+
+					// (PatientSourceOther)
+					System.err.println("IIT ML: (PatientSourceOther): " + getPatientSourceOther(demographics));
+
+					// (PatientSourceVCT)
+					System.err.println("IIT ML: (PatientSourceVCT): " + getPatientSourceVCT(demographics));
+
+					// (MaritalStatusDivorced)
+					System.err.println("IIT ML: (MaritalStatusDivorced): " + getMaritalStatusDivorced(demographics));
+
+					// (MaritalStatusMarried)
+					System.err.println("IIT ML: (MaritalStatusMarried): " + getMaritalStatusMarried(demographics));
+
+					// (MaritalStatusMinor)
+					System.err.println("IIT ML: (MaritalStatusMinor): " + getMaritalStatusMinor(demographics));
+
+					// (MaritalStatusOther)
+					System.err.println("IIT ML: (MaritalStatusOther): " + getMaritalStatusOther(demographics));
+
+					// (MaritalStatusPolygamous)
+					System.err.println("IIT ML: (MaritalStatusPolygamous): " + getMaritalStatusPolygamous(demographics));
+
+					// (MaritalStatusSingle)
+					System.err.println("IIT ML: (MaritalStatusSingle): " + getMaritalStatusSingle(demographics));
+
+					// (MaritalStatusWidow)
+					System.err.println("IIT ML: (MaritalStatusWidow): " + getMaritalStatusWidow(demographics));
+
+
+					// Treatment Section
+					//Pharmacy
+					Set<Treatment> pharmTreatment = new HashSet<>();
+					// PatientPK(0), DispenseDate(1), ExpectedReturn(2), Drug(3), TreatmentType(4)
+					for (List<Object> ls : pharmacy) {
+						// Limit to last 400 days
+						Date dispenseDate = (Date) ls.get(1);
+						// Get the difference in days
+						long differenceInMilliseconds = now.getTime() - dispenseDate.getTime();
+						int differenceInDays = (int) (differenceInMilliseconds / (24 * 60 * 60 * 1000));
+						if (differenceInDays < 400) {
+							Treatment newTreatment = new Treatment();
+							newTreatment.setPatientID((Integer) ls.get(0));
+							newTreatment.setEncounterDate(dispenseDate);
+							newTreatment.setDrug((String) ls.get(3));
+							newTreatment.setTreatmentType((String) ls.get(4));
+							pharmTreatment.add(newTreatment);
 						}
 					}
+
+					System.err.println(
+							"IIT ML: Total number of regimens - nonfiltered (last 400 days): " + pharmTreatment.size());
+
+					// (num_hiv_regimens) -- Note: If zero, we show NA
+					System.err.println("IIT ML: (num_hiv_regimens): " + getNumHivRegimens(pharmTreatment));
+
+					//End Appointments
+					System.err.println("IIT ML: END IIT ML TEST: " + new Date());
+
+					stopTime = System.currentTimeMillis();
+					long elapsedTime = stopTime - startTime;
+					System.out.println("IIT ML: Time taken: " + elapsedTime);
+					System.out.println("IIT ML: Time taken sec: " + elapsedTime / 1000);
+
+					stopMemory = getMemoryConsumption();
+					long usedMemory = stopMemory - startMemory;
+					System.out.println("IIT ML: Memory used: " + usedMemory);
+
+					// We got the final table
+					System.err.println("IIT ML: Table: " + visitAppts);
+
+					// late: Total number of times late to visit - Visit table only
+
+					System.err.println("*************************************************************************");
+				} catch (Exception ex) {
+					System.err.println("IIT ML ERROR: " + ex.getMessage());
+					ex.printStackTrace();
 				}
 			}
-			System.err.println("IIT ML: pharmacy before: " + pharmAppts.size());
-			processRecords(pharmAppts);
-
-			System.err.println("IIT ML: Got Filtered visits: " + visitAppts.size());
-			System.err.println("IIT ML: Got Filtered pharmacy: " + pharmAppts.size());
-
-			//Combine the two sets
-			visitAppts.addAll(pharmAppts);
-			System.err.println("IIT ML: Prepared appointments before: " + visitAppts.size());
-			processRecords(visitAppts);
-
-			System.err.println("IIT ML: Final appointments (n_appts): " + visitAppts.size());
-
-			List<Appointment> sortedRecords = sortAppointmentsByEncounterDate(visitAppts);
-			List<Integer> missedRecord = calculateLateness(sortedRecords);
-
-			System.err.println("IIT ML: Missed before: " + missedRecord);
-
-			Integer missed1 = getMissed1(missedRecord);
-			System.err.println("IIT ML: Missed by at least one (missed1): " + missed1);
-
-			Integer missed5 = getMissed5(missedRecord);
-			System.err.println("IIT ML: Missed by at least five (missed5): " + missed5);
-
-			Integer missed30 = getMissed30(missedRecord);
-			System.err.println("IIT ML: Missed by at least thirty (missed30): " + missed30);
-
-			Integer missed1Last5 = getMissed1Last5(missedRecord);
-			System.err.println("IIT ML: Missed by at least one in the latest 5 appointments (missed1_Last5): " + missed1Last5);
-
-			Integer missed5Last5 = getMissed5Last5(missedRecord);
-			System.err.println("IIT ML: Missed by at least five in the latest 5 appointments (missed5_Last5): " + missed5Last5);
-
-			Integer missed30Last5 = getMissed30Last5(missedRecord);
-			System.err.println("IIT ML: Missed by at least thirty in the latest 5 appointments (missed30_Last5): " + missed30Last5);
-
-			//End Appointments
-			System.err.println("IIT ML: END IIT ML TEST: " + new Date());
-
-			stopTime = System.currentTimeMillis();
-			long elapsedTime = stopTime - startTime;
-			System.out.println("IIT ML: Time taken: " + elapsedTime);
-			System.out.println("IIT ML: Time taken sec: " + elapsedTime / 1000);
-
-			stopMemory = getMemoryConsumption();
-			long usedMemory = stopMemory - startMemory;
-			System.out.println("IIT ML: Memory used: " + usedMemory);
-
-			// We got the final table
-			System.err.println("IIT ML: Table: " + visitAppts);
-
 			return(new SimpleObject());
 		}
 		catch (Exception e) {
@@ -617,6 +882,828 @@ public class MachineLearningRestController extends BaseRestController {
 			e.printStackTrace();
 			return new ResponseEntity<Object>("Could not process the IIT Test", new HttpHeaders(), HttpStatus.UNPROCESSABLE_ENTITY);
 		}
+	}
+
+	private Integer getMaritalStatusOther(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> maritalObject = demographics.get(demographics.size() - 1);
+				if(maritalObject.get(4) != null) {
+					String gender = (String) maritalObject.get(4);
+					if (!gender.trim().equalsIgnoreCase("single") && !gender.trim().equalsIgnoreCase("divorced") && !gender.trim().equalsIgnoreCase("window")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMaritalStatusSingle(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> genderObject = demographics.get(demographics.size() - 1);
+				String gender = (String) genderObject.get(4);
+				if(gender.trim().equalsIgnoreCase("single")){
+					ret = 1;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMaritalStatusWindow(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> genderObject = demographics.get(demographics.size() - 1);
+				String gender = (String) genderObject.get(4);
+				if(gender.trim().equalsIgnoreCase("window")){
+					ret = 1;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMaritalStatusPolygamous(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> genderObject = demographics.get(demographics.size() - 1);
+				String gender = (String) genderObject.get(4);
+				if(gender.trim().equalsIgnoreCase("polygamous")){
+					ret = 1;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMaritalStatusDivorced(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> genderObject = demographics.get(demographics.size() - 1);
+				String gender = (String) genderObject.get(4);
+				if(gender.trim().equalsIgnoreCase("divorced") || gender.trim().equalsIgnoreCase("separated")) {
+					ret = 1;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMaritalStatusMarried(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> genderObject = demographics.get(demographics.size() - 1);
+				String gender = (String) genderObject.get(4);
+				if(gender.trim().equalsIgnoreCase("married") || gender.trim().equalsIgnoreCase("monogamous") || gender.trim().equalsIgnoreCase("cohabiting")) {
+					ret = 1;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMaritalStatusMinor(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> genderObject = demographics.get(demographics.size() - 1);
+				Date DOB = (Date) genderObject.get(2);
+				Date now = new Date();
+				Instant dobInstant = DOB.toInstant();
+				Instant nowInstant = now.toInstant();
+				// Get the age in years
+				// Duration duration = Duration.between(nowInstant, dobInstant);
+				// long years = duration.toDays() / 365;
+				long years = ChronoUnit.YEARS.between(nowInstant, dobInstant);
+				if(years <= 15) {
+					ret = 1;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getPatientSourceVCT(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> genderObject = demographics.get(demographics.size() - 1);
+				String gender = (String) genderObject.get(3);
+				if(gender.trim().equalsIgnoreCase("vct")) {
+					ret = 1;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getPatientSourceOther(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> genderObject = demographics.get(demographics.size() - 1);
+				String gender = (String) genderObject.get(3);
+				if(!gender.trim().equalsIgnoreCase("opd") && !gender.trim().equalsIgnoreCase("vct")) {
+					ret = 1;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getPatientSourceOPD(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> genderObject = demographics.get(demographics.size() - 1);
+				String gender = (String) genderObject.get(3);
+				if(gender.trim().equalsIgnoreCase("opd")) {
+					ret = 1;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getGenderFemale(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> genderObject = demographics.get(demographics.size() - 1);
+				String gender = (String) genderObject.get(1);
+				if(gender.trim().equalsIgnoreCase("female")) {
+					ret = 1;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getGenderMale(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> genderObject = demographics.get(demographics.size() - 1);
+				String gender = (String) genderObject.get(1);
+				if(gender.trim().equalsIgnoreCase("male")) {
+					ret = 1;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthJan(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = (monthOfYear == Month.JANUARY) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthFeb(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = (monthOfYear == Month.FEBRUARY) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthMar(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = (monthOfYear == Month.MARCH) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthApr(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = monthOfYear == Month.APRIL ? 1: 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthMay(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = (monthOfYear == Month.MAY) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthJun(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = (monthOfYear == Month.JUNE) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthJul(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = (monthOfYear == Month.JULY) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthAug(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = (monthOfYear == Month.AUGUST) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthSep(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = (monthOfYear == Month.SEPTEMBER) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthOct(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = monthOfYear == Month.OCTOBER ? 1: 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthNov(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = (monthOfYear == Month.NOVEMBER) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMonthDec(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getMonthOfYear(NAD);
+				ret = (monthOfYear == Month.DECEMBER) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDayMon(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getDayOfWeek(NAD);
+				ret = (monthOfYear == 1) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDayTue(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getDayOfWeek(NAD);
+				ret = (monthOfYear == 2) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDayWed(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getDayOfWeek(NAD);
+				ret = (monthOfYear == 3) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDayThu(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getDayOfWeek(NAD);
+				ret = (monthOfYear == 4) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDayFri(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getDayOfWeek(NAD);
+				ret = (monthOfYear == 5) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDaySat(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getDayOfWeek(NAD);
+				ret = (monthOfYear == 6) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDaySun(List<Appointment> appointments) {
+		Integer ret = 0;
+		if(appointments != null) {
+			// Get the last appointment
+			if(appointments.size() > 0) {
+				Appointment latestAppointment = appointments.get(appointments.size() - 1);
+				Date NAD = latestAppointment.getAppointmentDate();
+				int monthOfYear = getDayOfWeek(NAD);
+				ret = (monthOfYear == 7) ? 1 : 0;
+			}
+		}
+		return(ret);
+	}
+
+	public static int getMonthOfYear(Date date) {
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(date);
+		// Calendar months are zero-based, so adding 1 to get the correct month.
+		return calendar.get(Calendar.MONTH) + 1;
+	}
+
+	public static int getDayOfWeek(Date date) {
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(date);
+		// Calendar weeks are zero-based, so adding 1 to get the correct week.
+		return calendar.get(Calendar.DAY_OF_WEEK) + 1;
+	}
+
+	private Double getBMI(Double height, Double weight) {
+		// BMI is given by (Weight / ((Height/100)^2))
+		Double ret = 0.00;
+		if(height > 0 && weight > 0) {
+			//constraints
+			if(height >= 100 && height <= 250 && weight >= 30 && weight <= 200) {
+				ret = weight / (Math.pow((height / 100), 2));
+			}
+		}
+		return(ret);
+	}
+
+	private Double getWeight(List<List<Object>> visits) {
+		Double ret = 0.00;
+		if(visits != null) {
+			// Flip the list -- the last becomes the first
+			Collections.reverse(visits);
+			for (List<Object> in : visits) {
+				if(in.get(5) != null) {
+					Double weight = (Double) in.get(5);
+					return(weight);
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Double getHeight(List<List<Object>> visits) {
+		Double ret = 0.00;
+		if(visits != null) {
+			// Flip the list -- the last becomes the first
+			Collections.reverse(visits);
+			for (List<Object> in : visits) {
+				if(in.get(4) != null) {
+					Double height = (Double) in.get(4);
+					return(height);
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Double getUnscheduledRateLast5(List<List<Object>> visits) {
+		Double ret = 0.00;
+		if(visits != null) {
+			Integer addition = 0;
+
+			// Get last 5 visits
+			List<List<Object>> workingList = new ArrayList<>();
+			int size = visits.size();
+			if (size > 5) {
+				workingList.addAll(visits.subList(size - 5, size));
+			} else {
+				workingList.addAll(visits);
+			}
+			Integer divider = Math.max(workingList.size(), 1); // Avoid divide by zero
+
+			for (List<Object> in : workingList) {
+				String visitType = (String)in.get(3);
+				if(visitType != null && visitType.trim().equalsIgnoreCase("unscheduled")) {
+					addition++;
+				}
+			}
+			ret = ((double)addition / (double)divider);
+		}
+		return(ret);
+	}
+
+	private Double getAverageTCALast5(List<Appointment> appointments) {
+		Double ret = 0.00;
+		if(appointments != null) {
+			List<Appointment> workingList = new ArrayList<>();
+			List<Appointment> holdingList = new ArrayList<>();
+			// Apparently we should not consider the last encounter. No idea why.
+			holdingList.addAll(appointments);
+			if(holdingList.size() > 0) {
+				holdingList.remove(holdingList.size() - 1);
+			}
+			int size = holdingList.size();
+			if (size > 5) {
+				workingList.addAll(holdingList.subList(size - 5, size));
+			} else {
+				workingList.addAll(holdingList);
+			}
+			Integer divider = workingList.size();
+			if(divider > 0) {
+				Integer totalDays = 0;
+				for (Appointment in : workingList) {
+					// Get the difference in days
+					long differenceInMilliseconds = in.getAppointmentDate().getTime() - in.getEncounterDate().getTime();
+					int differenceInDays = (int) (differenceInMilliseconds / (24 * 60 * 60 * 1000));
+					totalDays += differenceInDays;
+				}
+				ret = ((double)totalDays / (double)divider);
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getNumHivRegimens(Set<Treatment> treatments) {
+		Integer ret = 0;
+		if(treatments != null) {
+			Set<String> drugs = new HashSet<>(); // This will ensure we get unique drugs
+			for (Treatment in : treatments) {
+				System.err.println("IIT ML: got drug: " + in.getDrug() + " Treatment Type: " + in.getTreatmentType());
+				if (in.getDrug() != null && in.getTreatmentType() != null && !in.getTreatmentType().trim().equalsIgnoreCase("Prophylaxis")) {
+					String drug = in.getDrug().trim().toLowerCase();
+					drugs.add(drug);
+				}
+			}
+			ret = drugs.size();
+		}
+		return(ret);
+	}
+
+	private Double getAverageLatenessLast5(List<Integer> missed) {
+		Double ret = 0.00;
+		if(missed != null) {
+			Integer addition = 0;
+			Integer divider = 5;
+
+			// Get last 5 missed
+			List<Integer> workingList = new ArrayList<>();
+			int size = missed.size();
+			if (size > 5) {
+				workingList.addAll(missed.subList(size - 5, size));
+			} else {
+				workingList.addAll(missed);
+			}
+
+			for (Integer in : workingList) {
+				if(in > 0) {
+					addition += in;
+				}
+			}
+			ret = ((double)addition / (double)divider);
+		}
+		return(ret);
+	}
+
+	private Integer getLateLast5(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			List<Integer> workingList = new ArrayList<>();
+			int size = missed.size();
+			if (size > 5) {
+				workingList.addAll(missed.subList(size - 5, size));
+			} else {
+				workingList.addAll(missed);
+			}
+			for (Integer in : workingList) {
+				if (in >= 1) {
+					ret++;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Double getAverageLatenessLast10(List<Integer> missed) {
+		Double ret = 0.00;
+		if(missed != null) {
+			Integer addition = 0;
+			Integer divider = 10;
+
+			// Get last 10 missed
+			List<Integer> workingList = new ArrayList<>();
+			int size = missed.size();
+			if (size > 10) {
+				workingList.addAll(missed.subList(size - 10, size));
+			} else {
+				workingList.addAll(missed);
+			}
+
+			for (Integer in : workingList) {
+				if(in > 0) {
+					addition += in;
+				}
+			}
+			ret = ((double)addition / (double)divider);
+		}
+		return(ret);
+	}
+
+	private Double getAverageLatenessLast3(List<Integer> missed) {
+		Double ret = 0.00;
+		if(missed != null) {
+			Integer addition = 0;
+			Integer divider = 3;
+
+			// Get last 3 missed
+			List<Integer> workingList = new ArrayList<>();
+			int size = missed.size();
+			if (size > 3) {
+				workingList.addAll(missed.subList(size - 3, size));
+			} else {
+				workingList.addAll(missed);
+			}
+
+			for (Integer in : workingList) {
+				if(in > 0) {
+					addition += in;
+				}
+			}
+			ret = ((double)addition / (double)divider);
+		}
+		return(ret);
+	}
+
+	private Integer getNextAppointmentDate(List<Appointment> allAppts) {
+		Integer ret = 0;
+		if(allAppts != null) {
+			int size = allAppts.size();
+			if(size > 0) {
+				// Get latest appointment
+				Appointment last = allAppts.get(size - 1);
+				Date lastNAD = last.getAppointmentDate();
+				Date lastEncounterDate = last.getEncounterDate();
+				// Get the difference in days
+				long differenceInMilliseconds = lastNAD.getTime() - lastEncounterDate.getTime();
+				int differenceInDays = (int) (differenceInMilliseconds / (24 * 60 * 60 * 1000));
+				// Only positive integers
+				ret = Math.max(differenceInDays, 0);
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getLateLast3(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			List<Integer> workingList = new ArrayList<>();
+			int size = missed.size();
+			if (size > 3) {
+				workingList.addAll(missed.subList(size - 3, size));
+			} else {
+				workingList.addAll(missed);
+			}
+			for (Integer in : workingList) {
+				if (in >= 1) {
+					ret++;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getLateLast10(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			List<Integer> workingList = new ArrayList<>();
+			int size = missed.size();
+			if (size > 10) {
+				workingList.addAll(missed.subList(size - 10, size));
+			} else {
+				workingList.addAll(missed);
+			}
+			for (Integer in : workingList) {
+				if (in >= 1) {
+					ret++;
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getVisit1(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			int size = missed.size();
+			ret = size > 0 ? missed.get(size - 1) : 0;
+		}
+		return(ret);
+	}
+
+	private Integer getVisit2(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			int size = missed.size();
+			ret = size > 1 ? missed.get(size - 2) : 0;
+		}
+		return(ret);
+	}
+
+	private Integer getVisit3(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			int size = missed.size();
+			ret = size > 2 ? missed.get(size - 3) : 0;
+		}
+		return(ret);
+	}
+
+	private Integer getVisit4(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			int size = missed.size();
+			ret = size > 3 ? missed.get(size - 4) : 0;
+		}
+		return(ret);
+	}
+
+	private Integer getVisit5(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			int size = missed.size();
+			ret = size > 4 ? missed.get(size - 5) : 0;
+		}
+		return(ret);
+	}
+
+	private Double getLate28Rate(Integer late28, Integer n_appts) {
+		Double ret = 0.00;
+		if(late28 > 0 && n_appts > 0) {
+			ret = ((double)late28 / (double)n_appts);
+		}
+		return(ret);
+	}
+
+	private Double getLateRate(Integer late, Integer n_appts) {
+		Double ret = 0.00;
+		if(late > 0 && n_appts > 0) {
+			ret = ((double)late / (double)n_appts);
+		}
+		return(ret);
+	}
+
+	private Double getAverageLateness(List<Integer> missed, Integer divider) {
+		Double ret = 0.00;
+		if(missed != null && divider > 0.00) {
+			Integer addition = 0;
+			for (Integer in : missed) {
+				if(in > 0) {
+					addition += in;
+				}
+			}
+			ret = ((double)addition / (double)divider);
+		}
+		return(ret);
+	}
+
+	private Integer getLate28(List<Integer> missed) {
+		Integer ret = 0;
+		if(missed != null) {
+			for (Integer in : missed) {
+				if (in >= 28) {
+					ret++;
+				}
+			}
+		}
+		return(ret);
 	}
 
 	private Integer getMissed1(List<Integer> missed) {
@@ -706,6 +1793,9 @@ public class MachineLearningRestController extends BaseRestController {
 
 			long differenceInMilliseconds = nextRecord.getEncounterDate().getTime() - currentRecord.getAppointmentDate().getTime();
 			int differenceInDays = (int) (differenceInMilliseconds / (24 * 60 * 60 * 1000));
+
+			// If difference is less than zero, make it zero
+			differenceInDays = Math.max(differenceInDays, 0);
 
 			dateDifferences.add(differenceInDays);
 		}
