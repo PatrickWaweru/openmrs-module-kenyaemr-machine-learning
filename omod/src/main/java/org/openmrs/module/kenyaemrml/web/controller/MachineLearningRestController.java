@@ -789,11 +789,22 @@ public class MachineLearningRestController extends BaseRestController {
 					// (BMI) -- NB: If zero, return NA
 					System.err.println("IIT ML: (BMI): " + getBMI(height, weight));
 
+					// Gender (Male == 1 and Female == 2)
+					Integer patientGender = 0;
+					Integer female = getGenderFemale(demographics);
+					Integer male = getGenderMale(demographics);
+					if(male == 1) {
+						patientGender = 1;
+					}
+					if(female == 1) {
+						patientGender = 2;
+					}
+
 					// (GenderFemale)
-					System.err.println("IIT ML: (GenderFemale): " + getGenderFemale(demographics));
+					System.err.println("IIT ML: (GenderFemale): " + female);
 
 					// (GenderMale)
-					System.err.println("IIT ML: (GenderMale): " + getGenderMale(demographics));
+					System.err.println("IIT ML: (GenderMale): " + male);
 
 					// (PatientSourceOPD)
 					System.err.println("IIT ML: (PatientSourceOPD): " + getPatientSourceOPD(demographics));
@@ -804,26 +815,83 @@ public class MachineLearningRestController extends BaseRestController {
 					// (PatientSourceVCT)
 					System.err.println("IIT ML: (PatientSourceVCT): " + getPatientSourceVCT(demographics));
 
+					// (Age)
+					Long Age = getAgeYears(demographics);
+					System.err.println("IIT ML: (Age): " + Age);
+
 					// (MaritalStatusDivorced)
-					System.err.println("IIT ML: (MaritalStatusDivorced): " + getMaritalStatusDivorced(demographics));
+					System.err.println("IIT ML: (MaritalStatusDivorced): " + getMaritalStatusDivorced(demographics, Age));
 
 					// (MaritalStatusMarried)
-					System.err.println("IIT ML: (MaritalStatusMarried): " + getMaritalStatusMarried(demographics));
+					System.err.println("IIT ML: (MaritalStatusMarried): " + getMaritalStatusMarried(demographics, Age));
 
 					// (MaritalStatusMinor)
-					System.err.println("IIT ML: (MaritalStatusMinor): " + getMaritalStatusMinor(demographics));
+					System.err.println("IIT ML: (MaritalStatusMinor): " + getMaritalStatusMinor(Age));
 
 					// (MaritalStatusOther)
-					System.err.println("IIT ML: (MaritalStatusOther): " + getMaritalStatusOther(demographics));
+					System.err.println("IIT ML: (MaritalStatusOther): " + getMaritalStatusOther(demographics, Age));
 
 					// (MaritalStatusPolygamous)
-					System.err.println("IIT ML: (MaritalStatusPolygamous): " + getMaritalStatusPolygamous(demographics));
+					System.err.println("IIT ML: (MaritalStatusPolygamous): " + getMaritalStatusPolygamous(demographics, Age));
 
 					// (MaritalStatusSingle)
-					System.err.println("IIT ML: (MaritalStatusSingle): " + getMaritalStatusSingle(demographics));
+					System.err.println("IIT ML: (MaritalStatusSingle): " + getMaritalStatusSingle(demographics, Age));
 
 					// (MaritalStatusWidow)
-					System.err.println("IIT ML: (MaritalStatusWidow): " + getMaritalStatusWidow(demographics));
+					System.err.println("IIT ML: (MaritalStatusWidow): " + getMaritalStatusWidow(demographics, Age));
+
+					// Standard Care, Fast Track,
+					// (DifferentiatedCarecommunityartdistributionhcwled)
+					System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionhcwled): " + getDifferentiatedCarecommunityartdistributionhcwled(visits));
+
+					// (DifferentiatedCarecommunityartdistributionpeerled)
+					System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionpeerled): " + getDifferentiatedCarecommunityartdistributionpeerled(visits));
+
+					// (DifferentiatedCareexpress)
+					System.err.println("IIT ML: (DifferentiatedCareexpress): " + getDifferentiatedCareexpress(visits));
+
+					// (DifferentiatedCarefacilityartdistributiongroup)
+					System.err.println("IIT ML: (DifferentiatedCarefacilityartdistributiongroup): " + getDifferentiatedCarefacilityartdistributiongroup(visits));
+
+					// (DifferentiatedCarefasttrack)
+					System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + getDifferentiatedCarefasttrack(visits));
+
+					// (DifferentiatedCarestandardcare)
+					System.err.println("IIT ML: (DifferentiatedCarestandardcare): " + getDifferentiatedCarestandardcare(visits));
+
+					// (StabilityAssessmentStable)
+					System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + getStabilityAssessmentStable(visits));
+
+					// (StabilityAssessmentUnstable)
+					System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + getStabilityAssessmentUnstable(visits));
+
+					// (most_recent_art_adherencefair)
+					System.err.println("IIT ML: (most_recent_art_adherencefair): " + getMostRecentArtAdherenceFair(visits));
+
+					// (most_recent_art_adherencegood)
+					System.err.println("IIT ML: (most_recent_art_adherencegood): " + getMostRecentArtAdherenceGood(visits));
+
+					// (most_recent_art_adherencepoor)
+					System.err.println("IIT ML: (most_recent_art_adherencepoor): " + getMostRecentArtAdherencePoor(visits));
+
+					// (Pregnantno)
+					System.err.println("IIT ML: (Pregnantno): " + getPregnantNo(visits, patientGender, Age));
+
+					// (PregnantNR)
+					System.err.println("IIT ML: (PregnantNR): " + getPregnantNR(patientGender, Age));
+
+					// (Pregnantyes)
+					System.err.println("IIT ML: (Pregnantyes): " + getPregnantYes(visits, patientGender, Age));
+
+					// (Breastfeedingno)
+					System.err.println("IIT ML: (Breastfeedingno): " + getBreastFeedingNo(visits, patientGender, Age));
+
+					// (BreastfeedingNR)
+					System.err.println("IIT ML: (BreastfeedingNR): " + getBreastFeedingNR(visits, patientGender, Age));
+
+					// (Breastfeedingyes)
+					System.err.println("IIT ML: (Breastfeedingyes): " + getBreastFeedingYes(visits, patientGender, Age));
+
 
 
 					// Treatment Section
@@ -884,15 +952,247 @@ public class MachineLearningRestController extends BaseRestController {
 		}
 	}
 
-	private Integer getMaritalStatusOther(List<List<Object>> demographics) {
+	private String getBreastFeedingNo(List<List<Object>> visits, Integer gender, Long Age) {
+		String ret = "NA";
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(11) != null) {
+					String isBreastFeeding = (String) visitObject.get(11);
+					if(isBreastFeeding.trim().equalsIgnoreCase("yes")) {
+						ret = "0";
+						return(ret);
+					}
+					if(isBreastFeeding.trim().equalsIgnoreCase("no") && gender == 2 && Age > 9 && Age < 50) {
+						ret = "1";
+						return(ret);
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private String getBreastFeedingNR(Integer gender, Long Age) {
+		String ret = "0";
+		if(gender == 1 || Age < 10 || Age > 50) {
+			ret = "1";
+			return(ret);
+		}
+		return(ret);
+	}
+
+	private String getBreastFeedingYes(List<List<Object>> visits, Integer gender, Long Age) {
+		String ret = "NA";
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(11) != null) {
+					String isBreastFeeding = (String) visitObject.get(11);
+					if(isBreastFeeding.trim().equalsIgnoreCase("no")) {
+						ret = "0";
+						return(ret);
+					}
+					if(isBreastFeeding.trim().equalsIgnoreCase("yes") && gender == 2 && Age > 9 && Age < 50) {
+						ret = "1";
+						return(ret);
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private String getPregnantNo(List<List<Object>> visits, Integer gender, Long Age) {
+		String ret = "NA";
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(6) != null) {
+					String isPregnant = (String) visitObject.get(6);
+					if(isPregnant.trim().equalsIgnoreCase("yes")) {
+						ret = "0";
+						return(ret);
+					}
+					if(isPregnant.trim().equalsIgnoreCase("no") && gender == 2 && Age > 9 && Age < 50) {
+						ret = "1";
+						return(ret);
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private String getPregnantNR(Integer gender, Long Age) {
+		String ret = "0";
+		if(gender == 1 || Age < 10 || Age > 50) {
+			ret = "1";
+			return(ret);
+		}
+		return(ret);
+	}
+
+	private String getPregnantYes(List<List<Object>> visits, Integer gender, Long Age) {
+		String ret = "NA";
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(6) != null) {
+					String isPregnant = (String) visitObject.get(6);
+					if(isPregnant.trim().equalsIgnoreCase("no")) {
+						ret = "0";
+						return(ret);
+					}
+					if(isPregnant.trim().equalsIgnoreCase("yes") && gender == 2 && Age > 9 && Age < 50) {
+						ret = "1";
+						return(ret);
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMostRecentArtAdherenceFair(List<List<Object>> visits) {
 		Integer ret = 0;
-		if(demographics != null) {
-			// Get the last appointment
-			if (demographics.size() > 0) {
-				List<Object> maritalObject = demographics.get(demographics.size() - 1);
-				if(maritalObject.get(4) != null) {
-					String gender = (String) maritalObject.get(4);
-					if (!gender.trim().equalsIgnoreCase("single") && !gender.trim().equalsIgnoreCase("divorced") && !gender.trim().equalsIgnoreCase("window")) {
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				// Get adherence category (ART) position
+				if (visitObject.get(12) != null) {
+					String adherencePositions = (String) visitObject.get(12);
+					String[] tokens = adherencePositions.split("\\|");
+
+					int artPos = -1;
+					for (int i = 0; i < tokens.length; i++) {
+						if (tokens[i].trim().equalsIgnoreCase("ART")) {
+							System.out.println("Position of 'ART': " + i);
+							break;
+						}
+					}
+
+					if(artPos > -1) {
+						// We found ART adherence is covered we get the status
+						if (visitObject.get(9) != null) {
+							String adherenceString = (String) visitObject.get(9);
+							String[] adherenceTokens = adherenceString.split("\\|");
+							if(adherenceTokens.length > 0) {
+								for (int i = 0; i < adherenceTokens.length; i++) {
+									if(i == artPos) {
+										if (adherenceTokens[i].trim().equalsIgnoreCase("fair")) {
+											ret = 1;
+											return(ret);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMostRecentArtAdherenceGood(List<List<Object>> visits) {
+		Integer ret = 0;
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				// Get adherence category (ART) position
+				if (visitObject.get(12) != null) {
+					String adherencePositions = (String) visitObject.get(12);
+					String[] tokens = adherencePositions.split("\\|");
+
+					int artPos = -1;
+					for (int i = 0; i < tokens.length; i++) {
+						if (tokens[i].trim().equalsIgnoreCase("ART")) {
+							System.out.println("Position of 'ART': " + i);
+							break;
+						}
+					}
+
+					if(artPos > -1) {
+						// We found ART adherence is covered we get the status
+						if (visitObject.get(9) != null) {
+							String adherenceString = (String) visitObject.get(9);
+							String[] adherenceTokens = adherenceString.split("\\|");
+							if(adherenceTokens.length > 0) {
+								for (int i = 0; i < adherenceTokens.length; i++) {
+									if(i == artPos) {
+										if (adherenceTokens[i].trim().equalsIgnoreCase("good")) {
+											ret = 1;
+											return(ret);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMostRecentArtAdherencePoor(List<List<Object>> visits) {
+		Integer ret = 0;
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				// Get adherence category (ART) position
+				if (visitObject.get(12) != null) {
+					String adherencePositions = (String) visitObject.get(12);
+					String[] tokens = adherencePositions.split("\\|");
+
+					int artPos = -1;
+					for (int i = 0; i < tokens.length; i++) {
+						if (tokens[i].trim().equalsIgnoreCase("ART")) {
+							System.out.println("Position of 'ART': " + i);
+							break;
+						}
+					}
+
+					if(artPos > -1) {
+						// We found ART adherence is covered we get the status
+						if (visitObject.get(9) != null) {
+							String adherenceString = (String) visitObject.get(9);
+							String[] adherenceTokens = adherenceString.split("\\|");
+							if(adherenceTokens.length > 0) {
+								for (int i = 0; i < adherenceTokens.length; i++) {
+									if(i == artPos) {
+										if (adherenceTokens[i].trim().equalsIgnoreCase("poor")) {
+											ret = 1;
+											return(ret);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getStabilityAssessmentStable(List<List<Object>> visits) {
+		Integer ret = 0;
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(8) != null) {
+					String differentiatedCare = (String) visitObject.get(8);
+					if(differentiatedCare.trim().equalsIgnoreCase("stable")) {
 						ret = 1;
 					}
 				}
@@ -901,14 +1201,159 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private Integer getMaritalStatusSingle(List<List<Object>> demographics) {
+	private Integer getStabilityAssessmentUnstable(List<List<Object>> visits) {
+		Integer ret = 0;
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(8) != null) {
+					String differentiatedCare = (String) visitObject.get(8);
+					if(differentiatedCare.trim().equalsIgnoreCase("not stable")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDifferentiatedCarecommunityartdistributionhcwled(List<List<Object>> visits) {
+		Integer ret = 0;
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(7) != null) {
+					String differentiatedCare = (String) visitObject.get(7);
+					if(differentiatedCare.trim().equalsIgnoreCase("Community ART Distribution - HCW Led")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDifferentiatedCarecommunityartdistributionpeerled(List<List<Object>> visits) {
+		Integer ret = 0;
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(7) != null) {
+					String differentiatedCare = (String) visitObject.get(7);
+					if(differentiatedCare.trim().equalsIgnoreCase("Community ART Distribution - Peer Led")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDifferentiatedCareexpress(List<List<Object>> visits) {
+		Integer ret = 0;
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(7) != null) {
+					String differentiatedCare = (String) visitObject.get(7);
+					if(differentiatedCare.trim().equalsIgnoreCase("Express")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDifferentiatedCarefacilityartdistributiongroup(List<List<Object>> visits) {
+		Integer ret = 0;
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(7) != null) {
+					String differentiatedCare = (String) visitObject.get(7);
+					if(differentiatedCare.trim().equalsIgnoreCase("Facility ART Distribution Group")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDifferentiatedCarefasttrack(List<List<Object>> visits) {
+		Integer ret = 0;
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(7) != null) {
+					String differentiatedCare = (String) visitObject.get(7);
+					if(differentiatedCare.trim().equalsIgnoreCase("Fast Track")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getDifferentiatedCarestandardcare(List<List<Object>> visits) {
+		Integer ret = 0;
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				if (visitObject.get(7) != null) {
+					String differentiatedCare = (String) visitObject.get(7);
+					if(differentiatedCare.trim().equalsIgnoreCase("Standard Care")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMaritalStatusOther(List<List<Object>> demographics, Long Age) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last appointment
+			if (demographics.size() > 0) {
+				List<Object> maritalObject = demographics.get(demographics.size() - 1);
+				if(maritalObject.get(4) != null) {
+					String marital = (String) maritalObject.get(4);
+					if (!marital.trim().equalsIgnoreCase("single") &&
+							!marital.trim().equalsIgnoreCase("divorced") &&
+							!marital.trim().equalsIgnoreCase("widow") &&
+							!marital.trim().equalsIgnoreCase("separated") &&
+							!marital.trim().equalsIgnoreCase("married") &&
+							!marital.trim().equalsIgnoreCase("monogamous") &&
+							!marital.trim().equalsIgnoreCase("cohabiting") &&
+							!marital.trim().equalsIgnoreCase("polygamous") &&
+							Age > 15
+					) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMaritalStatusSingle(List<List<Object>> demographics, Long Age) {
 		Integer ret = 0;
 		if(demographics != null) {
 			// Get the last appointment
 			if (demographics.size() > 0) {
 				List<Object> genderObject = demographics.get(demographics.size() - 1);
 				String gender = (String) genderObject.get(4);
-				if(gender.trim().equalsIgnoreCase("single")){
+				if(gender.trim().equalsIgnoreCase("single") && Age > 15){
 					ret = 1;
 				}
 			}
@@ -916,82 +1361,103 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private Integer getMaritalStatusWindow(List<List<Object>> demographics) {
+	private Integer getMaritalStatusWidow(List<List<Object>> demographics, Long Age) {
 		Integer ret = 0;
 		if(demographics != null) {
 			// Get the last appointment
 			if (demographics.size() > 0) {
-				List<Object> genderObject = demographics.get(demographics.size() - 1);
-				String gender = (String) genderObject.get(4);
-				if(gender.trim().equalsIgnoreCase("window")){
-					ret = 1;
+				List<Object> maritalObject = demographics.get(demographics.size() - 1);
+				if(maritalObject.get(4) != null) {
+					String marital = (String) maritalObject.get(4);
+					if (marital.trim().equalsIgnoreCase("widow") && Age > 15) {
+						ret = 1;
+					}
 				}
 			}
 		}
 		return(ret);
 	}
 
-	private Integer getMaritalStatusPolygamous(List<List<Object>> demographics) {
+	private Integer getMaritalStatusPolygamous(List<List<Object>> demographics, Long Age) {
 		Integer ret = 0;
 		if(demographics != null) {
 			// Get the last appointment
 			if (demographics.size() > 0) {
-				List<Object> genderObject = demographics.get(demographics.size() - 1);
-				String gender = (String) genderObject.get(4);
-				if(gender.trim().equalsIgnoreCase("polygamous")){
-					ret = 1;
+				List<Object> maritalObject = demographics.get(demographics.size() - 1);
+				if(maritalObject.get(4) != null) {
+					String marital = (String) maritalObject.get(4);
+					if (marital.trim().equalsIgnoreCase("polygamous") && Age > 15) {
+						ret = 1;
+					}
 				}
 			}
 		}
 		return(ret);
 	}
 
-	private Integer getMaritalStatusDivorced(List<List<Object>> demographics) {
+	private Integer getMaritalStatusDivorced(List<List<Object>> demographics, Long Age) {
 		Integer ret = 0;
 		if(demographics != null) {
 			// Get the last appointment
 			if (demographics.size() > 0) {
-				List<Object> genderObject = demographics.get(demographics.size() - 1);
-				String gender = (String) genderObject.get(4);
-				if(gender.trim().equalsIgnoreCase("divorced") || gender.trim().equalsIgnoreCase("separated")) {
-					ret = 1;
+				List<Object> maritalObject = demographics.get(demographics.size() - 1);
+				if(maritalObject.get(4) != null) {
+					String marital = (String) maritalObject.get(4);
+					if ((marital.trim().equalsIgnoreCase("divorced") && Age > 15) ||
+							(marital.trim().equalsIgnoreCase("separated") && Age > 15)
+					) {
+						ret = 1;
+					}
 				}
 			}
 		}
 		return(ret);
 	}
 
-	private Integer getMaritalStatusMarried(List<List<Object>> demographics) {
+	private Integer getMaritalStatusMarried(List<List<Object>> demographics, Long Age) {
 		Integer ret = 0;
 		if(demographics != null) {
 			// Get the last appointment
 			if (demographics.size() > 0) {
-				List<Object> genderObject = demographics.get(demographics.size() - 1);
-				String gender = (String) genderObject.get(4);
-				if(gender.trim().equalsIgnoreCase("married") || gender.trim().equalsIgnoreCase("monogamous") || gender.trim().equalsIgnoreCase("cohabiting")) {
-					ret = 1;
+				List<Object> maritalObject = demographics.get(demographics.size() - 1);
+				if(maritalObject.get(4) != null){
+					String marital = (String) maritalObject.get(4);
+					if ((marital.trim().equalsIgnoreCase("married") && Age > 15) ||
+							(marital.trim().equalsIgnoreCase("monogamous") && Age > 15) ||
+							(marital.trim().equalsIgnoreCase("cohabiting") && Age > 15)
+					) {
+						ret = 1;
+					}
 				}
 			}
 		}
 		return(ret);
 	}
 
-	private Integer getMaritalStatusMinor(List<List<Object>> demographics) {
+	private Integer getMaritalStatusMinor(Long Age) {
 		Integer ret = 0;
+		if (Age <= 15) {
+			ret = 1;
+		}
+		return(ret);
+	}
+
+	private Long getAgeYears(List<List<Object>> demographics) {
+		Long ret = 0L;
 		if(demographics != null) {
 			// Get the last appointment
 			if (demographics.size() > 0) {
-				List<Object> genderObject = demographics.get(demographics.size() - 1);
-				Date DOB = (Date) genderObject.get(2);
-				Date now = new Date();
-				Instant dobInstant = DOB.toInstant();
-				Instant nowInstant = now.toInstant();
-				// Get the age in years
-				// Duration duration = Duration.between(nowInstant, dobInstant);
-				// long years = duration.toDays() / 365;
-				long years = ChronoUnit.YEARS.between(nowInstant, dobInstant);
-				if(years <= 15) {
-					ret = 1;
+				List<Object> maritalObject = demographics.get(demographics.size() - 1);
+				if(maritalObject.get(2) != null) {
+					Date DOB = (Date) maritalObject.get(2);
+					Date now = new Date();
+					Instant dobInstant = DOB.toInstant();
+					Instant nowInstant = now.toInstant();
+					// Get the age in years
+					// Duration duration = Duration.between(nowInstant, dobInstant);
+					// long years = duration.toDays() / 365;
+					long years = ChronoUnit.YEARS.between(nowInstant, dobInstant);
+					ret = years;
 				}
 			}
 		}
