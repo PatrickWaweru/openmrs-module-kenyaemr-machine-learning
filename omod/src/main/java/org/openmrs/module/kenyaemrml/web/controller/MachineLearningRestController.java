@@ -477,6 +477,8 @@ public class MachineLearningRestController extends BaseRestController {
 
 					String demographicsQuery = "CALL sp_iitml_get_patient_demographics(" + patientID + ")";
 
+					String labQuery = "CALL sp_iitml_get_patient_lab(" + patientID + ")";
+
 					List<List<Object>> visits = administrationService
 							.executeSQL(visitsQuery, true); // PatientPK(0), VisitDate(1), NextAppointmentDate(2), VisitType(3), Height(4), Weight(5),
 							// Pregnant(6), DiffentiatedCare(7), StabilityAssessment(8), Adherence(9), WhoStage(10), BreastFeeding(11)
@@ -486,6 +488,10 @@ public class MachineLearningRestController extends BaseRestController {
 					List<List<Object>> demographics = administrationService
 							.executeSQL(demographicsQuery,
 									true); // PatientPK(0), Gender, PatientSource, MaritalStatus, Age, PopulationType
+
+					List<List<Object>> lab = administrationService
+							.executeSQL(labQuery,
+									true); // PatientPK(0), ReportedByDate, TestResult
 
 					System.err.println("IIT ML: Got visits: " + visits.size());
 					System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
@@ -887,12 +893,49 @@ public class MachineLearningRestController extends BaseRestController {
 					System.err.println("IIT ML: (Breastfeedingno): " + getBreastFeedingNo(visits, patientGender, Age));
 
 					// (BreastfeedingNR)
-					System.err.println("IIT ML: (BreastfeedingNR): " + getBreastFeedingNR(visits, patientGender, Age));
+					System.err.println("IIT ML: (BreastfeedingNR): " + getBreastFeedingNR(patientGender, Age));
 
 					// (Breastfeedingyes)
 					System.err.println("IIT ML: (Breastfeedingyes): " + getBreastFeedingYes(visits, patientGender, Age));
 
+					// (PopulationTypeGP)
+					System.err.println("IIT ML: (PopulationTypeGP): " + getPopulationTypeGP(demographics));
 
+					// (PopulationTypeKP)
+					System.err.println("IIT ML: (PopulationTypeKP): " + getPopulationTypeKP(demographics));
+
+					// (AHDNo)
+					System.err.println("IIT ML: (AHDNo): " + getAHDNo(visits, Age));
+
+					// (AHDYes)
+					System.err.println("IIT ML: (AHDYes): " + getAHDYes(visits, Age));
+
+					// (OptimizedHIVRegimenNo)
+					System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + getOptimizedHIVRegimenNo(pharmacy));
+
+					// (OptimizedHIVRegimenYes)
+					System.err.println("IIT ML: (OptimizedHIVRegimenYes): " + getOptimizedHIVRegimenYes(pharmacy));
+
+					// NB: Any number equal or above 200 is considered High Viral Load (HVL). Any below is LDL or suppressed or Low Viral Load (LVL)
+					// (most_recent_vlsuppressed)
+					System.err.println("IIT ML: (most_recent_vlsuppressed): " + getMostRecentVLsuppressed(lab));
+
+					// (most_recent_vlunsuppressed)
+					System.err.println("IIT ML: (n_tests_threeyears): " + getMostRecentVLunsuppressed(lab));
+
+					// (n_tests_threeyears)
+					Integer n_test_threeyears = getNtestsThreeYears(lab);
+					System.err.println("IIT ML: (n_tests_threeyears): " + n_test_threeyears);
+
+					// (n_hvl_threeyears)
+					Integer n_hvl_threeyears = getNHVLThreeYears(lab);
+					System.err.println("IIT ML: (n_hvl_threeyears): " + n_hvl_threeyears);
+
+					// (n_lvl_threeyears)
+					System.err.println("IIT ML: (n_lvl_threeyears): " + getNLVLThreeYears(lab));
+
+					// (recent_hvl_rate)
+					System.err.println("IIT ML: (recent_hvl_rate): " + getRecentHvlRate(n_hvl_threeyears, n_test_threeyears));
 
 					// Treatment Section
 					//Pharmacy
@@ -950,6 +993,289 @@ public class MachineLearningRestController extends BaseRestController {
 			e.printStackTrace();
 			return new ResponseEntity<Object>("Could not process the IIT Test", new HttpHeaders(), HttpStatus.UNPROCESSABLE_ENTITY);
 		}
+	}
+
+	private String getAHDNo(List<List<Object>> visits, Long Age) {
+		String ret = "NA";
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				// If WHO Stage in (1,2) and Age six and above, then 1, if Age five or below or
+				// WHO stage in (3,4), then 0, if Age over 6 and WHO Stage is NULL, then NA
+				if (visitObject.get(10) != null) {
+					String whoStage = (String) visitObject.get(10);
+					whoStage = whoStage.trim().toLowerCase();
+					Integer whoStageInt = getIntegerValue(whoStage);
+					if((whoStageInt == 1 || whoStageInt == 2) && Age >= 6) {
+						ret = "1";
+						return(ret);
+					}
+					if((whoStageInt == 3 || whoStageInt == 4) && Age <= 5) {
+						ret = "0";
+						return(ret);
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private String getAHDYes(List<List<Object>> visits, Long Age) {
+		String ret = "NA";
+		if(visits != null) {
+			// Get the last visit
+			if (visits.size() > 0) {
+				List<Object> visitObject = visits.get(visits.size() - 1);
+				// If WHO Stage in (3,4) or Age five or below, then 1, if Age is six or
+				// over and WHO stage in (1,2), then 0, if Age 6 or over and WHO Stage is NULL, then NA
+				if (visitObject.get(10) != null) {
+					String whoStage = (String) visitObject.get(10);
+					whoStage = whoStage.trim().toLowerCase();
+					Integer whoStageInt = getIntegerValue(whoStage);
+					if((whoStageInt == 3 || whoStageInt == 4) && Age <= 5) {
+						ret = "1";
+						return(ret);
+					}
+					if((whoStageInt == 1 || whoStageInt == 2) && Age >= 6) {
+						ret = "0";
+						return(ret);
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Double getRecentHvlRate(Integer n_hvl_threeyears,Integer n_test_threeyears) {
+		Double ret = 0.00;
+
+		try {
+			if (n_test_threeyears != 0) {
+				ret = (n_hvl_threeyears * 1.00) / (n_test_threeyears * 1.00);
+			}
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		return(ret);
+	}
+
+	private Integer getOptimizedHIVRegimenNo(List<List<Object>> pharmacy) {
+		Integer ret = 1;
+		if(pharmacy != null) {
+			if (pharmacy.size() > 0) {
+				// The last record
+				List<Object> labObject = pharmacy.get(pharmacy.size() - 1);
+				// TreatmentType != NULL or Prophylaxis, Drug != NULL
+				if (labObject.get(4) != null && labObject.get(3) != null) {
+					// Get drug name
+					String drugName = (String) labObject.get(3);
+					drugName = drugName.toLowerCase();
+					if(drugName.contains("dtg")) {
+						ret = 0;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getOptimizedHIVRegimenYes(List<List<Object>> pharmacy) {
+		Integer ret = 0;
+		if(pharmacy != null) {
+			if (pharmacy.size() > 0) {
+				// The last record
+				List<Object> labObject = pharmacy.get(pharmacy.size() - 1);
+				// TreatmentType != NULL or Prophylaxis, Drug != NULL
+				if (labObject.get(4) != null && labObject.get(3) != null) {
+					// Get drug name
+					String drugName = (String) labObject.get(3);
+					drugName = drugName.toLowerCase();
+					if(drugName.contains("dtg")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMostRecentVLsuppressed(List<List<Object>> lab) {
+		Integer ret = 0;
+		if(lab != null) {
+			if (lab.size() > 0) {
+				// The last record
+				List<Object> labObject = lab.get(lab.size() - 1);
+				if (labObject.get(2) != null) {
+					String result = (String) labObject.get(2);
+					if(getIntegerValue(result.trim()) < 200 || result.trim().equalsIgnoreCase("LDL")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getMostRecentVLunsuppressed(List<List<Object>> lab) {
+		Integer ret = 0;
+		if(lab != null) {
+			if (lab.size() > 0) {
+				// The last record
+				List<Object> labObject = lab.get(lab.size() - 1);
+				if (labObject.get(2) != null) {
+					String result = (String) labObject.get(2);
+					if(getIntegerValue(result.trim()) >= 200) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getNtestsThreeYears(List<List<Object>> lab) {
+		Integer ret = 0;
+		if(lab != null) {
+			// Get for the last 3 years
+			if (lab.size() > 0) {
+				// Reverse the list to loop from the first
+				List<List<Object>> labRev = new ArrayList<>();
+				labRev.addAll(lab);
+				Collections.reverse(labRev);
+				// Count number of tests for the last 3 years
+				Date now = new Date();
+				Instant nowInstant = now.toInstant();
+				for(List<Object> labObject: labRev) {
+					if (labObject.get(1) != null) {
+						Date testDate = (Date) labObject.get(1);
+						Instant testInstant = testDate.toInstant();
+						long years = ChronoUnit.YEARS.between(nowInstant, testInstant);
+						if(years <= 3) {
+							ret++;
+						}
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getNHVLThreeYears(List<List<Object>> lab) {
+		Integer ret = 0;
+		if(lab != null) {
+			// Get for the last 3 years
+			if (lab.size() > 0) {
+				// Reverse the list to loop from the first
+				List<List<Object>> labRev = new ArrayList<>();
+				labRev.addAll(lab);
+				Collections.reverse(labRev);
+				// Count number of tests for the last 3 years
+				Date now = new Date();
+				Instant nowInstant = now.toInstant();
+				for(List<Object> labObject: labRev) {
+					if (labObject.get(1) != null && labObject.get(2) != null) {
+						Date testDate = (Date) labObject.get(1);
+						Instant testInstant = testDate.toInstant();
+						long years = ChronoUnit.YEARS.between(nowInstant, testInstant);
+						String result = (String) labObject.get(2);
+						if(years <= 3 && getIntegerValue(result.trim()) >= 200) {
+							ret++;
+						}
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getNLVLThreeYears(List<List<Object>> lab) {
+		Integer ret = 0;
+		if(lab != null) {
+			// Get for the last 3 years
+			if (lab.size() > 0) {
+				// Reverse the list to loop from the first
+				List<List<Object>> labRev = new ArrayList<>();
+				labRev.addAll(lab);
+				Collections.reverse(labRev);
+				// Count number of tests for the last 3 years
+				Date now = new Date();
+				Instant nowInstant = now.toInstant();
+				for(List<Object> labObject: labRev) {
+					if (labObject.get(1) != null && labObject.get(2) != null) {
+						Date testDate = (Date) labObject.get(1);
+						Instant testInstant = testDate.toInstant();
+						long years = ChronoUnit.YEARS.between(nowInstant, testInstant);
+						String result = (String) labObject.get(2);
+						if(years <= 3 && (getIntegerValue(result.trim()) < 200 || result.trim().equalsIgnoreCase("LDL"))) {
+							ret++;
+						}
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	/**
+	 * Gets the integer value of a string, otherwise returns zero
+	 * @param val
+	 * @return
+	 */
+	public static int getIntegerValue(String val) {
+		int ret = 0;
+		try {
+			ret = (int) Math.ceil(Double.parseDouble(val));
+		} catch(Exception ex) {}
+		return(ret);
+	}
+
+	/**
+	 * Gets the long value of a string, otherwise returns zero
+	 * @param val
+	 * @return
+	 */
+	public static long getLongValue(String val) {
+		long ret = 0;
+		try {
+			ret = (long) Math.ceil(Double.parseDouble(val));
+		} catch(Exception ex) {}
+		return(ret);
+	}
+
+	private Integer getPopulationTypeKP(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last visit
+			if (demographics.size() > 0) {
+				List<Object> visitObject = demographics.get(demographics.size() - 1);
+				if (visitObject.get(6) != null) {
+					String differentiatedCare = (String) visitObject.get(6);
+					if(differentiatedCare.trim().equalsIgnoreCase("Key Population")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
+	}
+
+	private Integer getPopulationTypeGP(List<List<Object>> demographics) {
+		Integer ret = 0;
+		if(demographics != null) {
+			// Get the last visit
+			if (demographics.size() > 0) {
+				List<Object> visitObject = demographics.get(demographics.size() - 1);
+				if (visitObject.get(6) != null) {
+					String differentiatedCare = (String) visitObject.get(6);
+					if(differentiatedCare.trim().equalsIgnoreCase("General Population")) {
+						ret = 1;
+					}
+				}
+			}
+		}
+		return(ret);
 	}
 
 	private String getBreastFeedingNo(List<List<Object>> visits, Integer gender, Long Age) {
