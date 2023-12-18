@@ -573,7 +573,7 @@
     </changeSet>
 
     <!-- Add IIT ML stored procedures - patient visits to the IIT ML table -->
-    <changeSet author="pwaweru" id="kenyaemr-ML-sp-patient-visits-20231218-153630">
+    <changeSet author="pwaweru" id="kenyaemr-ML-sp-patient-visits-20231218-153630" runOnChange="true">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*)
@@ -586,7 +586,7 @@
     </changeSet>
 
     <!-- Add IIT ML stored procedures - pharmacy visits to the IIT ML table -->
-    <changeSet author="pwaweru" id="kenyaemr-ML-sp-pharmacy-visits-20231218-153630">
+    <changeSet author="pwaweru" id="kenyaemr-ML-sp-pharmacy-visits-20231218-153630" runOnChange="true">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*)
@@ -599,7 +599,7 @@
     </changeSet>
 
     <!-- Add IIT ML stored procedures - patient lab to the IIT ML table -->
-    <changeSet author="pwaweru" id="kenyaemr-ML-sp-patient-lab-20231218-153630">
+    <changeSet author="pwaweru" id="kenyaemr-ML-sp-patient-lab-20231218-153630" runOnChange="true">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*)
@@ -612,7 +612,7 @@
     </changeSet>
 
     <!-- Add IIT ML stored procedures - patient demographics to the IIT ML table -->
-    <changeSet author="pwaweru" id="kenyaemr-ML-sp-patient-demographics-20231218-153630">
+    <changeSet author="pwaweru" id="kenyaemr-ML-sp-patient-demographics-20231218-153630" runOnChange="true">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*)
@@ -625,7 +625,7 @@
     </changeSet>
 
     <!-- Add IIT ML stored procedures - patient ART to the IIT ML table -->
-    <changeSet author="pwaweru" id="kenyaemr-ML-sp-patient-ART-20231218-153630">
+    <changeSet author="pwaweru" id="kenyaemr-ML-sp-patient-ART-20231218-153630" runOnChange="true">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*)

@@ -730,6 +730,9 @@ public class MachineLearningRestController extends BaseRestController {
 					// New model (average_tca_last5)
 					System.err.println("IIT ML: new model (average_tca_last5): " + getAverageTCALast5(sortedRecords));
 
+					// New model (unscheduled_rate)
+					System.err.println("IIT ML: new model (unscheduled_rate): " + getUnscheduledRate(visits));
+
 					// New model (unscheduled_rate_last5)
 					System.err.println("IIT ML: new model (unscheduled_rate_last5): " + getUnscheduledRateLast5(visits));
 
@@ -1004,6 +1007,23 @@ public class MachineLearningRestController extends BaseRestController {
 			e.printStackTrace();
 			return new ResponseEntity<Object>("Could not process the IIT Test", new HttpHeaders(), HttpStatus.UNPROCESSABLE_ENTITY);
 		}
+	}
+
+	private Double getUnscheduledRate(List<List<Object>> visits) {
+		Double ret = 0.00;
+		if(visits != null && visits.size() > 0) {
+			Integer addition = 0;
+			Integer divider = Math.max(visits.size(), 1); // Avoid divide by zero
+
+			for (List<Object> in : visits) {
+				String visitType = (String)in.get(3);
+				if(visitType != null && visitType.trim().equalsIgnoreCase("unscheduled")) {
+					addition++;
+				}
+			}
+			ret = ((double)addition / (double)divider);
+		}
+		return(ret);
 	}
 
 	private Long getTimeOnArt(List<List<Object>> artRecord) {
