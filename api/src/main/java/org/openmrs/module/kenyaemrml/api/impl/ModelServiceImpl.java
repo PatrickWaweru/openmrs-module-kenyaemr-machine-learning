@@ -920,7 +920,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			String strIITHighRiskThreshold = globalIITHighRiskThreshold.getPropertyValue();
 			Double decIITHighRiskThreshold = Double.valueOf(strIITHighRiskThreshold);
 			// Model Configuration
-			modelConfigs.put("modelId", "XGB_IIT_02232023");
+			modelConfigs.put("modelId", "XGB_IIT_12152023");
 			String today = (new SimpleDateFormat("yyyy-MM-dd")).format(new Date());
 			modelConfigs.put("encounterDate", today);
 			modelConfigs.put("facilityId", "");
