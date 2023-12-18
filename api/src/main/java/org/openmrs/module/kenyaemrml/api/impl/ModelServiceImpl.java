@@ -553,6 +553,10 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			Double average_tca_last5 = getAverageTCALast5(sortedRecords);
 			System.err.println("IIT ML: new model (average_tca_last5): " + average_tca_last5);
 
+			// New model (unscheduled_rate)
+			Double unscheduled_rate = getUnscheduledRate(visits);
+			System.err.println("IIT ML: new model (unscheduled_rate): " + unscheduled_rate);
+
 			// New model (unscheduled_rate_last5)
 			Double unscheduled_rate_last5 = getUnscheduledRateLast5(visits);
 			System.err.println("IIT ML: new model (unscheduled_rate_last5): " + unscheduled_rate_last5);
@@ -644,7 +648,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			System.err.println("IIT ML: (Height): " + height);
 
 			// (BMI) -- NB: If zero, return NA
-			System.err.println("IIT ML: (BMI): " + getBMI(height, weight));
+			Double BMI = getBMI(height, weight);
+			System.err.println("IIT ML: (BMI): " + BMI);
 
 			// Gender (Male == 1 and Female == 2)
 			Integer patientGender = 0;
@@ -658,19 +663,24 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			}
 
 			// (GenderFemale)
+			Integer GenderFemale = female;
 			System.err.println("IIT ML: (GenderFemale): " + female);
 
 			// (GenderMale)
+			Integer GenderMale = male;
 			System.err.println("IIT ML: (GenderMale): " + male);
 
 			// (PatientSourceOPD)
-			System.err.println("IIT ML: (PatientSourceOPD): " + getPatientSourceOPD(demographics));
+			Integer PatientSourceOPD = getPatientSourceOPD(demographics);
+			System.err.println("IIT ML: (PatientSourceOPD): " + PatientSourceOPD);
 
 			// (PatientSourceOther)
-			System.err.println("IIT ML: (PatientSourceOther): " + getPatientSourceOther(demographics));
+			Integer PatientSourceOther = getPatientSourceOther(demographics);
+			System.err.println("IIT ML: (PatientSourceOther): " + PatientSourceOther);
 
 			// (PatientSourceVCT)
-			System.err.println("IIT ML: (PatientSourceVCT): " + getPatientSourceVCT(demographics));
+			Integer PatientSourceVCT = getPatientSourceVCT(demographics);
+			System.err.println("IIT ML: (PatientSourceVCT): " + PatientSourceVCT);
 
 			// (Age)
 			Long Age = getAgeYears(demographics);
@@ -706,97 +716,125 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 
 			// Standard Care, Fast Track,
 			// (DifferentiatedCarecommunityartdistributionhcwled)
-			System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionhcwled): " + getDifferentiatedCarecommunityartdistributionhcwled(visits));
+			Integer DifferentiatedCarecommunityartdistributionhcwled = getDifferentiatedCarecommunityartdistributionhcwled(visits);
+			System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionhcwled): " + DifferentiatedCarecommunityartdistributionhcwled);
 
 			// (DifferentiatedCarecommunityartdistributionpeerled)
-			System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionpeerled): " + getDifferentiatedCarecommunityartdistributionpeerled(visits));
+			Integer DifferentiatedCarecommunityartdistributionpeerled = getDifferentiatedCarecommunityartdistributionpeerled(visits);
+			System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionpeerled): " + DifferentiatedCarecommunityartdistributionpeerled);
 
 			// (DifferentiatedCareexpress)
-			System.err.println("IIT ML: (DifferentiatedCareexpress): " + getDifferentiatedCareexpress(visits));
+			Integer DifferentiatedCareexpress = getDifferentiatedCareexpress(visits);
+			System.err.println("IIT ML: (DifferentiatedCareexpress): " + DifferentiatedCareexpress);
 
 			// (DifferentiatedCarefacilityartdistributiongroup)
-			System.err.println("IIT ML: (DifferentiatedCarefacilityartdistributiongroup): " + getDifferentiatedCarefacilityartdistributiongroup(visits));
+			Integer DifferentiatedCarefacilityartdistributiongroup = getDifferentiatedCarefacilityartdistributiongroup(visits);
+			System.err.println("IIT ML: (DifferentiatedCarefacilityartdistributiongroup): " + DifferentiatedCarefacilityartdistributiongroup);
 
 			// (DifferentiatedCarefasttrack)
-			System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + getDifferentiatedCarefasttrack(visits));
+			Integer DifferentiatedCarefasttrack = getDifferentiatedCarefasttrack(visits);
+			System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + DifferentiatedCarefasttrack);
 
 			// (DifferentiatedCarestandardcare)
-			System.err.println("IIT ML: (DifferentiatedCarestandardcare): " + getDifferentiatedCarestandardcare(visits));
+			Integer DifferentiatedCarestandardcare = getDifferentiatedCarestandardcare(visits);
+			System.err.println("IIT ML: (DifferentiatedCarestandardcare): " + DifferentiatedCarestandardcare);
 
 			// (StabilityAssessmentStable)
-			System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + getStabilityAssessmentStable(visits));
+			Integer StabilityAssessmentStable = getStabilityAssessmentStable(visits);
+			System.err.println("IIT ML: (StabilityAssessmentStable): " + StabilityAssessmentStable);
 
 			// (StabilityAssessmentUnstable)
-			System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + getStabilityAssessmentUnstable(visits));
+			Integer StabilityAssessmentUnstable = getStabilityAssessmentUnstable(visits);
+			System.err.println("IIT ML: (StabilityAssessmentUnstable): " + StabilityAssessmentUnstable);
 
 			// (most_recent_art_adherencefair)
-			System.err.println("IIT ML: (most_recent_art_adherencefair): " + getMostRecentArtAdherenceFair(visits));
+			Integer most_recent_art_adherencefair = getMostRecentArtAdherenceFair(visits);
+			System.err.println("IIT ML: (most_recent_art_adherencefair): " + most_recent_art_adherencefair);
 
 			// (most_recent_art_adherencegood)
-			System.err.println("IIT ML: (most_recent_art_adherencegood): " + getMostRecentArtAdherenceGood(visits));
+			Integer most_recent_art_adherencegood = getMostRecentArtAdherenceGood(visits);
+			System.err.println("IIT ML: (most_recent_art_adherencegood): " + most_recent_art_adherencegood);
 
 			// (most_recent_art_adherencepoor)
-			System.err.println("IIT ML: (most_recent_art_adherencepoor): " + getMostRecentArtAdherencePoor(visits));
+			Integer most_recent_art_adherencepoor = getMostRecentArtAdherencePoor(visits);
+			System.err.println("IIT ML: (most_recent_art_adherencepoor): " + most_recent_art_adherencepoor);
 
 			// (Pregnantno)
-			System.err.println("IIT ML: (Pregnantno): " + getPregnantNo(visits, patientGender, Age));
+			String Pregnantno = getPregnantNo(visits, patientGender, Age);
+			System.err.println("IIT ML: (Pregnantno): " + Pregnantno);
 
 			// (PregnantNR)
-			System.err.println("IIT ML: (PregnantNR): " + getPregnantNR(patientGender, Age));
+			String PregnantNR = getPregnantNR(patientGender, Age);
+			System.err.println("IIT ML: (PregnantNR): " + PregnantNR);
 
 			// (Pregnantyes)
-			System.err.println("IIT ML: (Pregnantyes): " + getPregnantYes(visits, patientGender, Age));
+			String Pregnantyes = getPregnantYes(visits, patientGender, Age);
+			System.err.println("IIT ML: (Pregnantyes): " + Pregnantyes);
 
 			// (Breastfeedingno)
-			System.err.println("IIT ML: (Breastfeedingno): " + getBreastFeedingNo(visits, patientGender, Age));
+			String Breastfeedingno = getBreastFeedingNo(visits, patientGender, Age);
+			System.err.println("IIT ML: (Breastfeedingno): " + Breastfeedingno);
 
 			// (BreastfeedingNR)
-			System.err.println("IIT ML: (BreastfeedingNR): " + getBreastFeedingNR(patientGender, Age));
+			String BreastfeedingNR = getBreastFeedingNR(patientGender, Age);
+			System.err.println("IIT ML: (BreastfeedingNR): " + BreastfeedingNR);
 
 			// (Breastfeedingyes)
-			System.err.println("IIT ML: (Breastfeedingyes): " + getBreastFeedingYes(visits, patientGender, Age));
+			String Breastfeedingyes = getBreastFeedingYes(visits, patientGender, Age);
+			System.err.println("IIT ML: (Breastfeedingyes): " + Breastfeedingyes);
 
 			// (PopulationTypeGP)
-			System.err.println("IIT ML: (PopulationTypeGP): " + getPopulationTypeGP(demographics));
+			Integer PopulationTypeGP = getPopulationTypeGP(demographics);
+			System.err.println("IIT ML: (PopulationTypeGP): " + PopulationTypeGP);
 
 			// (PopulationTypeKP)
-			System.err.println("IIT ML: (PopulationTypeKP): " + getPopulationTypeKP(demographics));
+			Integer PopulationTypeKP = getPopulationTypeKP(demographics);
+			System.err.println("IIT ML: (PopulationTypeKP): " + PopulationTypeKP);
 
 			// (AHDNo)
-			System.err.println("IIT ML: (AHDNo): " + getAHDNo(visits, Age));
+			String AHDNo = getAHDNo(visits, Age);
+			System.err.println("IIT ML: (AHDNo): " + AHDNo);
 
 			// (AHDYes)
-			System.err.println("IIT ML: (AHDYes): " + getAHDYes(visits, Age));
+			String AHDYes = getAHDYes(visits, Age);
+			System.err.println("IIT ML: (AHDYes): " + AHDYes);
 
 			// (OptimizedHIVRegimenNo)
-			System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + getOptimizedHIVRegimenNo(pharmacy));
+			Integer OptimizedHIVRegimenNo = getOptimizedHIVRegimenNo(pharmacy);
+			System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + OptimizedHIVRegimenNo);
 
 			// (OptimizedHIVRegimenYes)
-			System.err.println("IIT ML: (OptimizedHIVRegimenYes): " + getOptimizedHIVRegimenYes(pharmacy));
+			Integer OptimizedHIVRegimenYes = getOptimizedHIVRegimenYes(pharmacy);
+			System.err.println("IIT ML: (OptimizedHIVRegimenYes): " + OptimizedHIVRegimenYes);
 
 			// NB: Any number equal or above 200 is considered High Viral Load (HVL). Any below is LDL or suppressed or Low Viral Load (LVL)
 			// (most_recent_vlsuppressed)
-			System.err.println("IIT ML: (most_recent_vlsuppressed): " + getMostRecentVLsuppressed(lab));
+			Integer most_recent_vlsuppressed = getMostRecentVLsuppressed(lab);
+			System.err.println("IIT ML: (most_recent_vlsuppressed): " + most_recent_vlsuppressed);
 
 			// (most_recent_vlunsuppressed)
-			System.err.println("IIT ML: (n_tests_threeyears): " + getMostRecentVLunsuppressed(lab));
+			Integer most_recent_vlunsuppressed = getMostRecentVLunsuppressed(lab);
+			System.err.println("IIT ML: (most_recent_vlunsuppressed): " + most_recent_vlunsuppressed);
 
 			// (n_tests_threeyears)
-			Integer n_test_threeyears = getNtestsThreeYears(lab);
-			System.err.println("IIT ML: (n_tests_threeyears): " + n_test_threeyears);
+			Integer n_tests_threeyears = getNtestsThreeYears(lab);
+			System.err.println("IIT ML: (n_tests_threeyears): " + n_tests_threeyears);
 
 			// (n_hvl_threeyears)
 			Integer n_hvl_threeyears = getNHVLThreeYears(lab);
 			System.err.println("IIT ML: (n_hvl_threeyears): " + n_hvl_threeyears);
 
 			// (n_lvl_threeyears)
-			System.err.println("IIT ML: (n_lvl_threeyears): " + getNLVLThreeYears(lab));
+			Integer n_lvl_threeyears = getNLVLThreeYears(lab);
+			System.err.println("IIT ML: (n_lvl_threeyears): " + n_lvl_threeyears);
 
 			// (recent_hvl_rate)
-			System.err.println("IIT ML: (recent_hvl_rate): " + getRecentHvlRate(n_hvl_threeyears, n_test_threeyears));
+			Double recent_hvl_rate = getRecentHvlRate(n_hvl_threeyears, n_tests_threeyears);
+			System.err.println("IIT ML: (recent_hvl_rate): " + recent_hvl_rate);
 
 			// (timeOnArt)
-			System.err.println("IIT ML: (timeOnArt): " + getTimeOnArt(art));
+			Long timeOnArt = getTimeOnArt(art);
+			System.err.println("IIT ML: (timeOnArt): " + timeOnArt);
 
 			// Treatment Section
 			//Pharmacy
@@ -822,23 +860,24 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					"IIT ML: Total number of regimens - nonfiltered (last 400 days): " + pharmTreatment.size());
 
 			// (num_hiv_regimens) -- Note: If zero, we show NA
-			System.err.println("IIT ML: (num_hiv_regimens): " + getNumHivRegimens(pharmTreatment));
+			Integer num_hiv_regimens = getNumHivRegimens(pharmTreatment);
+			System.err.println("IIT ML: (num_hiv_regimens): " + num_hiv_regimens);
 
 			// End Local Pull And Display
 
 			// Start Pulled Variables
-			patientPredictionVariables.put("Age", 0);
-			patientPredictionVariables.put("AHDNo", 0);
-			patientPredictionVariables.put("AHDYes", 0);
+			patientPredictionVariables.put("Age", Age);
+			patientPredictionVariables.put("AHDNo", AHDNo);
+			patientPredictionVariables.put("AHDYes", AHDYes);
 			patientPredictionVariables.put("average_tca_last5", average_tca_last5);
 			patientPredictionVariables.put("averagelateness", averagelateness);
 			patientPredictionVariables.put("averagelateness_last10", averagelateness_last10);
 			patientPredictionVariables.put("averagelateness_last3", averagelateness_last3);
 			patientPredictionVariables.put("averagelateness_last5", averagelateness_last5);
-			patientPredictionVariables.put("BMI", 0);
-			patientPredictionVariables.put("Breastfeedingno", 0);
-			patientPredictionVariables.put("BreastfeedingNR", 0);
-			patientPredictionVariables.put("Breastfeedingyes", 0);
+			patientPredictionVariables.put("BMI", BMI);
+			patientPredictionVariables.put("Breastfeedingno", Breastfeedingno);
+			patientPredictionVariables.put("BreastfeedingNR", BreastfeedingNR);
+			patientPredictionVariables.put("Breastfeedingyes", Breastfeedingyes);
 			patientPredictionVariables.put("DayFri", DayFri);
 			patientPredictionVariables.put("DayMon", DayMon);
 			patientPredictionVariables.put("DaySat", DaySat);
@@ -846,14 +885,14 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			patientPredictionVariables.put("DayThu", DayThu);
 			patientPredictionVariables.put("DayTue", DayTue);
 			patientPredictionVariables.put("DayWed", DayWed);
-			patientPredictionVariables.put("DifferentiatedCarecommunityartdistributionhcwled", 0);
-			patientPredictionVariables.put("DifferentiatedCarecommunityartdistributionpeerled", 0);
-			patientPredictionVariables.put("DifferentiatedCareexpress", 0);
-			patientPredictionVariables.put("DifferentiatedCarefacilityartdistributiongroup", 0);
-			patientPredictionVariables.put("DifferentiatedCarefasttrack", 0);
-			patientPredictionVariables.put("DifferentiatedCarestandardcare", 0);
-			patientPredictionVariables.put("GenderFemale", 0);
-			patientPredictionVariables.put("GenderMale", 0);
+			patientPredictionVariables.put("DifferentiatedCarecommunityartdistributionhcwled", DifferentiatedCarecommunityartdistributionhcwled);
+			patientPredictionVariables.put("DifferentiatedCarecommunityartdistributionpeerled", DifferentiatedCarecommunityartdistributionpeerled);
+			patientPredictionVariables.put("DifferentiatedCareexpress", DifferentiatedCareexpress);
+			patientPredictionVariables.put("DifferentiatedCarefacilityartdistributiongroup", DifferentiatedCarefacilityartdistributiongroup);
+			patientPredictionVariables.put("DifferentiatedCarefasttrack", DifferentiatedCarefasttrack);
+			patientPredictionVariables.put("DifferentiatedCarestandardcare", DifferentiatedCarestandardcare);
+			patientPredictionVariables.put("GenderFemale", GenderFemale);
+			patientPredictionVariables.put("GenderMale", GenderMale);
 			patientPredictionVariables.put("late", missed1);
 			patientPredictionVariables.put("late_last10", late_last10);
 			patientPredictionVariables.put("late_last3", late_last3);
@@ -880,31 +919,31 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			patientPredictionVariables.put("MonthNov", MonthNov);
 			patientPredictionVariables.put("MonthOct", MonthOct);
 			patientPredictionVariables.put("MonthSep", MonthSep);
-			patientPredictionVariables.put("most_recent_art_adherencefair", 0);
-			patientPredictionVariables.put("most_recent_art_adherencegood", 0);
-			patientPredictionVariables.put("most_recent_art_adherencepoor", 0);
-			patientPredictionVariables.put("most_recent_vlsuppressed", 0);
-			patientPredictionVariables.put("most_recent_vlunsuppressed", 0);
+			patientPredictionVariables.put("most_recent_art_adherencefair", most_recent_art_adherencefair);
+			patientPredictionVariables.put("most_recent_art_adherencegood", most_recent_art_adherencegood);
+			patientPredictionVariables.put("most_recent_art_adherencepoor", most_recent_art_adherencepoor);
+			patientPredictionVariables.put("most_recent_vlsuppressed", most_recent_vlsuppressed);
+			patientPredictionVariables.put("most_recent_vlunsuppressed", most_recent_vlunsuppressed);
 			patientPredictionVariables.put("n_appts", n_appts);
-			patientPredictionVariables.put("n_hvl_threeyears", 0);
-			patientPredictionVariables.put("n_lvl_threeyears", 0);
-			patientPredictionVariables.put("n_tests_threeyears", 0);
+			patientPredictionVariables.put("n_hvl_threeyears", n_hvl_threeyears);
+			patientPredictionVariables.put("n_lvl_threeyears", n_lvl_threeyears);
+			patientPredictionVariables.put("n_tests_threeyears", n_tests_threeyears);
 			patientPredictionVariables.put("NextAppointmentDate", NextAppointmentDate);
-			patientPredictionVariables.put("num_hiv_regimens", 0);
-			patientPredictionVariables.put("OptimizedHIVRegimenNo", 0);
-			patientPredictionVariables.put("OptimizedHIVRegimenYes", 0);
-			patientPredictionVariables.put("PatientSourceOPD", 0);
-			patientPredictionVariables.put("PatientSourceOther", 0);
-			patientPredictionVariables.put("PatientSourceVCT", 0);
-			patientPredictionVariables.put("PopulationTypeGP", 0);
-			patientPredictionVariables.put("PopulationTypeKP", 0);
-			patientPredictionVariables.put("Pregnantno", 0);
-			patientPredictionVariables.put("PregnantNR", 0);
-			patientPredictionVariables.put("Pregnantyes", 0);
-			patientPredictionVariables.put("recent_hvl_rate", 0);
-			patientPredictionVariables.put("StabilityAssessmentStable", 0);
-			patientPredictionVariables.put("StabilityAssessmentUnstable", 0);
-			patientPredictionVariables.put("timeOnArt", 0);
+			patientPredictionVariables.put("num_hiv_regimens", num_hiv_regimens);
+			patientPredictionVariables.put("OptimizedHIVRegimenNo", OptimizedHIVRegimenNo);
+			patientPredictionVariables.put("OptimizedHIVRegimenYes", OptimizedHIVRegimenYes);
+			patientPredictionVariables.put("PatientSourceOPD", PatientSourceOPD);
+			patientPredictionVariables.put("PatientSourceOther", PatientSourceOther);
+			patientPredictionVariables.put("PatientSourceVCT", PatientSourceVCT);
+			patientPredictionVariables.put("PopulationTypeGP", PopulationTypeGP);
+			patientPredictionVariables.put("PopulationTypeKP", PopulationTypeKP);
+			patientPredictionVariables.put("Pregnantno", Pregnantno);
+			patientPredictionVariables.put("PregnantNR", PregnantNR);
+			patientPredictionVariables.put("Pregnantyes", Pregnantyes);
+			patientPredictionVariables.put("recent_hvl_rate", recent_hvl_rate);
+			patientPredictionVariables.put("StabilityAssessmentStable", StabilityAssessmentStable);
+			patientPredictionVariables.put("StabilityAssessmentUnstable", StabilityAssessmentUnstable);
+			patientPredictionVariables.put("timeOnArt", timeOnArt);
 			patientPredictionVariables.put("unscheduled_rate", unscheduled_rate);
 			patientPredictionVariables.put("visit_1", visit_1);
 			patientPredictionVariables.put("visit_2", visit_2);
@@ -2410,6 +2449,23 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					return(height);
 				}
 			}
+		}
+		return(ret);
+	}
+
+	private Double getUnscheduledRate(List<List<Object>> visits) {
+		Double ret = 0.00;
+		if(visits != null && visits.size() > 0) {
+			Integer addition = 0;
+			Integer divider = Math.max(visits.size(), 1); // Avoid divide by zero
+
+			for (List<Object> in : visits) {
+				String visitType = (String)in.get(3);
+				if(visitType != null && visitType.trim().equalsIgnoreCase("unscheduled")) {
+					addition++;
+				}
+			}
+			ret = ((double)addition / (double)divider);
 		}
 		return(ret);
 	}
