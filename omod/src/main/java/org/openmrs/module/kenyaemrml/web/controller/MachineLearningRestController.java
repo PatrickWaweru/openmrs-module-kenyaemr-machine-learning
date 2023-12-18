@@ -454,6 +454,8 @@ public class MachineLearningRestController extends BaseRestController {
 					// REF: https://github.com/palladiumkenya/DWAPI-Queries/blob/dwapi-etl/DWAPI_New_Extracts/Patient.sql
 					// REF: https://raw.githubusercontent.com/palladiumkenya/DWAPI-Queries/dwapi-etl/DWAPI_New_Extracts/PatientsVisit.sql
 					// REF: https://raw.githubusercontent.com/palladiumkenya/DWAPI-Queries/dwapi-etl/DWAPI_New_Extracts/PatientPharmacy.sql
+					// REF: https://raw.githubusercontent.com/palladiumkenya/DWAPI-Queries/dwapi-etl/DWAPI_New_Extracts/PatientsLab.sql
+					// REF: https://raw.githubusercontent.com/palladiumkenya/DWAPI-Queries/dwapi-etl/DWAPI_New_Extracts/PatientArt.sql
 					// Patient 9895
 					long startTime = System.currentTimeMillis();
 					long stopTime = 0L;
@@ -479,6 +481,8 @@ public class MachineLearningRestController extends BaseRestController {
 
 					String labQuery = "CALL sp_iitml_get_patient_lab(" + patientID + ")";
 
+					String artQuery = "CALL sp_iitml_get_patient_ART(" + patientID + ")";
+
 					List<List<Object>> visits = administrationService
 							.executeSQL(visitsQuery, true); // PatientPK(0), VisitDate(1), NextAppointmentDate(2), VisitType(3), Height(4), Weight(5),
 							// Pregnant(6), DiffentiatedCare(7), StabilityAssessment(8), Adherence(9), WhoStage(10), BreastFeeding(11)
@@ -488,14 +492,18 @@ public class MachineLearningRestController extends BaseRestController {
 					List<List<Object>> demographics = administrationService
 							.executeSQL(demographicsQuery,
 									true); // PatientPK(0), Gender, PatientSource, MaritalStatus, Age, PopulationType
-
 					List<List<Object>> lab = administrationService
 							.executeSQL(labQuery,
 									true); // PatientPK(0), ReportedByDate, TestResult
+					List<List<Object>> art = administrationService
+							.executeSQL(artQuery,
+									true); // PatientPK(0), StartARTDate
 
 					System.err.println("IIT ML: Got visits: " + visits.size());
 					System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
 					System.err.println("IIT ML: Got demographics: " + demographics.size());
+					System.err.println("IIT ML: Got lab: " + lab.size());
+					System.err.println("IIT ML: Got ART: " + art.size());
 					// January 2019 reference date
 					Date jan2019 = new Date(119, 0, 1);
 					Date now = new Date();
@@ -937,6 +945,9 @@ public class MachineLearningRestController extends BaseRestController {
 					// (recent_hvl_rate)
 					System.err.println("IIT ML: (recent_hvl_rate): " + getRecentHvlRate(n_hvl_threeyears, n_test_threeyears));
 
+					// (timeOnArt)
+					System.err.println("IIT ML: (timeOnArt): " + getTimeOnArt(art));
+
 					// Treatment Section
 					//Pharmacy
 					Set<Treatment> pharmTreatment = new HashSet<>();
@@ -993,6 +1004,29 @@ public class MachineLearningRestController extends BaseRestController {
 			e.printStackTrace();
 			return new ResponseEntity<Object>("Could not process the IIT Test", new HttpHeaders(), HttpStatus.UNPROCESSABLE_ENTITY);
 		}
+	}
+
+	private Long getTimeOnArt(List<List<Object>> artRecord) {
+		Long ret = 0L;
+		if(artRecord != null) {
+			// Get the last record
+			if (artRecord.size() > 0) {
+				List<Object> visitObject = artRecord.get(artRecord.size() - 1);
+				if (visitObject.get(1) != null) {
+					Date artStartDate = (Date) visitObject.get(1);
+					Date now = new Date();
+
+					Instant artInstant = artStartDate.toInstant();
+					Instant nowInstant = now.toInstant();
+					// Get the age in years
+					// Duration duration = Duration.between(nowInstant, dobInstant);
+					// long years = duration.toDays() / 365;
+					long months = ChronoUnit.MONTHS.between(nowInstant, artInstant);
+					ret = months;
+				}
+			}
+		}
+		return(ret);
 	}
 
 	private String getAHDNo(List<List<Object>> visits, Long Age) {
