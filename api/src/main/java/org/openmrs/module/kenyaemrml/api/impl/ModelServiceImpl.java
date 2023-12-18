@@ -51,9 +51,11 @@ import org.openmrs.PatientIdentifier;
 import org.openmrs.PatientIdentifierType;
 import org.openmrs.PatientProgram;
 import org.openmrs.Program;
+import org.openmrs.api.AdministrationService;
 import org.openmrs.api.ProgramWorkflowService;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.impl.BaseOpenmrsService;
+import org.openmrs.logic.op.In;
 import org.openmrs.module.kenyaemr.Dictionary;
 import org.openmrs.module.kenyaemr.api.KenyaEmrService;
 import org.openmrs.module.kenyaemr.metadata.HivMetadata;
@@ -235,6 +237,46 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			modelConfigs.put("encounterDate", today);
 			modelConfigs.put("facilityId", "");
 			modelConfigs.put("debug", "true");
+
+			AdministrationService administrationService = Context.getAdministrationService();
+			Integer patientID = patient.getId();
+
+			// Call DB Queries
+			String visitsQuery = "CALL sp_iitml_get_visits(" + patientID + ")";
+
+			String pharmacyQuery = "CALL sp_iitml_get_pharmacy_visits(" + patientID + ")";
+
+			String demographicsQuery = "CALL sp_iitml_get_patient_demographics(" + patientID + ")";
+
+			String labQuery = "CALL sp_iitml_get_patient_lab(" + patientID + ")";
+
+			String artQuery = "CALL sp_iitml_get_patient_ART(" + patientID + ")";
+
+			List<List<Object>> visits = administrationService
+					.executeSQL(visitsQuery, true); // PatientPK(0), VisitDate(1), NextAppointmentDate(2), VisitType(3), Height(4), Weight(5),
+			// Pregnant(6), DiffentiatedCare(7), StabilityAssessment(8), Adherence(9), WhoStage(10), BreastFeeding(11)
+			List<List<Object>> pharmacy = administrationService
+					.executeSQL(pharmacyQuery,
+							true); // PatientPK(0), DispenseDate(1), ExpectedReturn(2), Drug(3), TreatmentType(4)
+			List<List<Object>> demographics = administrationService
+					.executeSQL(demographicsQuery,
+							true); // PatientPK(0), Gender, PatientSource, MaritalStatus, Age, PopulationType
+			List<List<Object>> lab = administrationService
+					.executeSQL(labQuery,
+							true); // PatientPK(0), ReportedByDate, TestResult
+			List<List<Object>> art = administrationService
+					.executeSQL(artQuery,
+							true); // PatientPK(0), StartARTDate
+
+			System.err.println("IIT ML: Got visits: " + visits.size());
+			System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
+			System.err.println("IIT ML: Got demographics: " + demographics.size());
+			System.err.println("IIT ML: Got lab: " + lab.size());
+			System.err.println("IIT ML: Got ART: " + art.size());
+			// January 2019 reference date
+			Date jan2019 = new Date(119, 0, 1);
+			Date now = new Date();
+
 			// Prediction Variables
 
 			// Start Facility Profile Matrix
@@ -271,25 +313,539 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 
 			// End Facility Profile Matrix
 
+			// Start Local Pull And Display
+			// Now that we have visits and pharmacy we can filter the data and apply logic
+
+			// Lateness Section
+			//Visits
+			Set<Appointment> visitAppts = new HashSet<>();
+			for (List<Object> ls : visits) {
+				// If NextAppointmentDate is null, dispose it
+				if (ls.get(0) != null && ls.get(1) != null && ls.get(2) != null) {
+					if (ls.get(0) instanceof Integer && ls.get(1) instanceof Date && ls.get(2) instanceof Date) {
+						// check that the date is after jan 2019
+						if (((Date) ls.get(1)).after(jan2019) && ((Date) ls.get(2)).after(jan2019)) {
+							// check that appointment is less than 365 days from encounter date
+							// Calculate the difference in milliseconds
+							long differenceInMillis = ((Date) ls.get(2)).getTime() - ((Date) ls.get(1)).getTime();
+							// Convert milliseconds to days
+							long differenceInDays = differenceInMillis / (24 * 60 * 60 * 1000);
+							if (differenceInDays < 365) {
+								// Ensure appointment day is after encounter day
+								if (((Date) ls.get(2)).after(((Date) ls.get(1)))) {
+									Appointment visit = new Appointment();
+									visit.setPatientID((Integer) ls.get(0));
+									visit.setEncounterDate((Date) ls.get(1));
+									visit.setAppointmentDate((Date) ls.get(2));
+									visitAppts.add(visit);
+								} else {
+									System.err
+											.println("IIT ML: appointment before encounter record rejected: " + ls);
+								}
+							} else {
+								System.err.println("IIT ML: 365 days record rejected: " + ls);
+							}
+						} else {
+							System.err.println("IIT ML: 2019 record rejected: " + ls);
+						}
+					}
+				}
+			}
+			System.err.println("IIT ML: visits before: " + visitAppts.size());
+			processRecords(visitAppts);
+
+			//Pharmacy
+			Set<Appointment> pharmAppts = new HashSet<>();
+			for (List<Object> ls : pharmacy) {
+				// patientid and encounter date should never be null
+				if (ls.get(0) != null && ls.get(1) != null && ls.get(2) != null) {
+					// if appointment date is null set a new date 30 days after encounter
+					if (ls.get(2) == null) {
+						// Create a Calendar instance
+						Calendar calendar = Calendar.getInstance();
+						calendar.setTime((Date) ls.get(1));
+						// Add 30 days
+						calendar.add(Calendar.DAY_OF_MONTH, 30);
+						// Get the new Date
+						Date newAppt = calendar.getTime();
+						ls.set(2, newAppt);
+					}
+					if (ls.get(0) instanceof Integer && ls.get(1) instanceof Date && ls.get(2) instanceof Date) {
+						// check that the date is after jan 2019
+						if (((Date) ls.get(1)).after(jan2019) && ((Date) ls.get(2)).after(jan2019)) {
+							// check that appointment is less than 365 days from today
+							// Calculate the difference in milliseconds
+							long differenceInMillis = ((Date) ls.get(2)).getTime() - ((Date) ls.get(1)).getTime();
+							// Convert milliseconds to days
+							long differenceInDays = differenceInMillis / (24 * 60 * 60 * 1000);
+							if (differenceInDays >= 365) {
+								// Create a Calendar instance
+								Calendar calendar = Calendar.getInstance();
+								calendar.setTime((Date) ls.get(1));
+								// Add 30 days
+								calendar.add(Calendar.DAY_OF_MONTH, 30);
+								// Get the new Date
+								Date newAppt = calendar.getTime();
+								ls.set(2, newAppt);
+							}
+							// If appointment day is before encounter day, set appointment to be after 30 days
+							if (((Date) ls.get(1)).after(((Date) ls.get(2)))) {
+								// Create a Calendar instance
+								Calendar calendar = Calendar.getInstance();
+								calendar.setTime((Date) ls.get(1));
+								// Add 30 days
+								calendar.add(Calendar.DAY_OF_MONTH, 30);
+								// Get the new Date
+								Date newAppt = calendar.getTime();
+								ls.set(2, newAppt);
+							}
+
+							Appointment visit = new Appointment();
+							visit.setPatientID((Integer) ls.get(0));
+							visit.setEncounterDate((Date) ls.get(1));
+							visit.setAppointmentDate((Date) ls.get(2));
+							pharmAppts.add(visit);
+
+						}
+					}
+				}
+			}
+			System.err.println("IIT ML: pharmacy before: " + pharmAppts.size());
+			processRecords(pharmAppts);
+
+			System.err.println("IIT ML: Got Filtered visits: " + visitAppts.size());
+			System.err.println("IIT ML: Got Filtered pharmacy: " + pharmAppts.size());
+
+			//Combine the two sets
+			Set<Appointment> allAppts = new HashSet<>();
+			allAppts.addAll(visitAppts);
+			allAppts.addAll(pharmAppts);
+			System.err.println("IIT ML: Prepared appointments before: " + allAppts.size());
+			processRecords(allAppts);
+
+			// New model (n_appts)
+			Integer n_appts = allAppts.size();
+			System.err.println("IIT ML: Final appointments (n_appts): " + n_appts);
+
+			List<Appointment> sortedVisits = sortAppointmentsByEncounterDate(visitAppts);
+			List<Appointment> sortedRecords = sortAppointmentsByEncounterDate(allAppts);
+			List<Integer> missedRecord = calculateLateness(sortedRecords);
+
+			System.err.println("IIT ML: Missed before: " + missedRecord);
+
+			Integer missed1 = getMissed1(missedRecord);
+			System.err.println("IIT ML: Missed by at least one (missed1): " + missed1);
+
+			Integer missed5 = getMissed5(missedRecord);
+			System.err.println("IIT ML: Missed by at least five (missed5): " + missed5);
+
+			Integer missed30 = getMissed30(missedRecord);
+			System.err.println("IIT ML: Missed by at least thirty (missed30): " + missed30);
+
+			Integer missed1Last5 = getMissed1Last5(missedRecord);
+			System.err.println(
+					"IIT ML: Missed by at least one in the latest 5 appointments (missed1_Last5): " + missed1Last5);
+
+			Integer missed5Last5 = getMissed5Last5(missedRecord);
+			System.err.println(
+					"IIT ML: Missed by at least five in the latest 5 appointments (missed5_Last5): " + missed5Last5);
+
+			Integer missed30Last5 = getMissed30Last5(missedRecord);
+			System.err.println(
+					"IIT ML: Missed by at least thirty in the latest 5 appointments (missed30_Last5): "
+							+ missed30Last5);
+
+			/**
+			 * New Model 13/12/2023
+			 * Based on the Visits table only
+			 * late
+			 * late28
+			 * average_lateness
+			 * late_rate
+			 * late28_rate
+			 * visit_1
+			 * visit_2
+			 * visit_3
+			 * visit_4
+			 * visit_5
+			 * late_last10
+			 * NextAppointmentDate
+			 * late_last3
+			 * averagelateness_last3
+			 * averagelateness_last10
+			 * late_last5
+			 * averagelateness_last5
+			 * average_tca_last5
+			 */
+
+			// New model (late)
+			System.err.println("IIT ML: new model (late): " + missed1);
+
+			// New model (late28)
+			Integer late28 = getLate28(missedRecord);
+			System.err.println("IIT ML: new model (late28): " + late28);
+
+			// New model (averagelateness)
+			Double averagelateness = getAverageLateness(missedRecord, allAppts.size());
+			System.err.println(
+					"IIT ML: new model (averagelateness): " + averagelateness);
+
+			// New model (late_rate)
+			Double late_rate = getLateRate(missed1, allAppts.size());
+			System.err.println("IIT ML: new model (late_rate): " + late_rate);
+
+			// New model (late28_rate)
+			Double late28_rate = getLate28Rate(late28, allAppts.size());
+			System.err.println("IIT ML: new model (late28_rate): " + late28_rate);
+
+			// New model (visit_1)
+			Integer visit_1 = getVisit1(missedRecord);
+			System.err.println("IIT ML: new model (visit_1): " + visit_1);
+
+			// New model (visit_2)
+			Integer visit_2 = getVisit2(missedRecord);
+			System.err.println("IIT ML: new model (visit_2): " + visit_2);
+
+			// New model (visit_3)
+			Integer visit_3 = getVisit3(missedRecord);
+			System.err.println("IIT ML: new model (visit_3): " + visit_3);
+
+			// New model (visit_4)
+			Integer visit_4 = getVisit4(missedRecord);
+			System.err.println("IIT ML: new model (visit_4): " + visit_4);
+
+			// New model (visit_5)
+			Integer visit_5 = getVisit5(missedRecord);
+			System.err.println("IIT ML: new model (visit_5): " + visit_5);
+
+			// New model (late_last10)
+			Integer late_last10 = getLateLast10(missedRecord);
+			System.err.println("IIT ML: new model (late_last10): " + late_last10);
+
+			// New model (NextAppointmentDate)
+			Integer NextAppointmentDate = getNextAppointmentDate(sortedRecords);
+			System.err.println("IIT ML: new model (NextAppointmentDate): " + NextAppointmentDate);
+
+			// New model (late_last3)
+			Integer late_last3 = getLateLast3(missedRecord);
+			System.err.println("IIT ML: new model (late_last3): " + late_last3);
+
+			// New model (averagelateness_last3)
+			Double averagelateness_last3 = getAverageLatenessLast3(missedRecord);
+			System.err
+					.println("IIT ML: new model (averagelateness_last3): " + averagelateness_last3);
+
+			// New model (averagelateness_last10)
+			Double averagelateness_last10 = getAverageLatenessLast10(missedRecord);
+			System.err.println(
+					"IIT ML: new model (averagelateness_last10): " + averagelateness_last10);
+
+			// New model (late_last5)
+			Integer late_last5 = getLateLast5(missedRecord);
+			System.err.println("IIT ML: new model (late_last5): " + late_last5);
+
+			// New model (averagelateness_last5)
+			Double averagelateness_last5 = getAverageLatenessLast5(missedRecord);
+			System.err
+					.println("IIT ML: new model (averagelateness_last5): " + averagelateness_last5);
+
+			// New model (average_tca_last5)
+			Double average_tca_last5 = getAverageTCALast5(sortedRecords);
+			System.err.println("IIT ML: new model (average_tca_last5): " + average_tca_last5);
+
+			// New model (unscheduled_rate_last5)
+			Double unscheduled_rate_last5 = getUnscheduledRateLast5(visits);
+			System.err.println("IIT ML: new model (unscheduled_rate_last5): " + unscheduled_rate_last5);
+
+			// New model (MonthApr)
+			Integer MonthApr = getMonthApr(sortedRecords);
+			System.err.println("IIT ML: new model (MonthApr): " + MonthApr);
+
+			// New model (MonthAug)
+			Integer MonthAug = getMonthAug(sortedRecords);
+			System.err.println("IIT ML: new model (MonthAug): " + MonthAug);
+
+			// New model (MonthDec)
+			Integer MonthDec = getMonthDec(sortedRecords);
+			System.err.println("IIT ML: new model (MonthDec): " + MonthDec);
+
+			// New model (MonthFeb)
+			Integer MonthFeb = getMonthFeb(sortedRecords);
+			System.err.println("IIT ML: new model (MonthFeb): " + MonthFeb);
+
+			// New model (MonthJan)
+			Integer MonthJan = getMonthJan(sortedRecords);
+			System.err.println("IIT ML: new model (MonthJan): " + MonthJan);
+
+			// New model (MonthJul)
+			Integer MonthJul = getMonthJul(sortedRecords);
+			System.err.println("IIT ML: new model (MonthJul): " + MonthJul);
+
+			// New model (MonthJun)
+			Integer MonthJun = getMonthJun(sortedRecords);
+			System.err.println("IIT ML: new model (MonthJun): " + MonthJun);
+
+			// New model (MonthMar)
+			Integer MonthMar = getMonthMar(sortedRecords);
+			System.err.println("IIT ML: new model (MonthMar): " + MonthMar);
+
+			// New model (MonthMay)
+			Integer MonthMay = getMonthMay(sortedRecords);
+			System.err.println("IIT ML: new model (MonthMay): " + MonthMay);
+
+			// New model (MonthNov)
+			Integer MonthNov = getMonthNov(sortedRecords);
+			System.err.println("IIT ML: new model (MonthNov): " + MonthNov);
+
+			// New model (MonthOct)
+			Integer MonthOct = getMonthOct(sortedRecords);
+			System.err.println("IIT ML: new model (MonthOct): " + MonthOct);
+
+			// New model (MonthSep)
+			Integer MonthSep = getMonthSep(sortedRecords);
+			System.err.println("IIT ML: new model (MonthSep): " + MonthSep);
+
+			// New model (DayFri)
+			Integer DayFri = getDayFri(sortedRecords);
+			System.err.println("IIT ML: new model (DayFri): " + DayFri);
+
+			// New model (DayMon)
+			Integer DayMon = getDayMon(sortedRecords);
+			System.err.println("IIT ML: new model (DayMon): " + DayMon);
+
+			// New model (DaySat)
+			Integer DaySat = getDaySat(sortedRecords);
+			System.err.println("IIT ML: new model (DaySat): " + DaySat);
+
+			// New model (DaySun)
+			Integer DaySun = getDaySun(sortedRecords);
+			System.err.println("IIT ML: new model (DaySun): " + DaySun);
+
+			// New model (DayThu)
+			Integer DayThu = getDayThu(sortedRecords);
+			System.err.println("IIT ML: new model (DayThu): " + DayThu);
+
+			// New model (DayTue)
+			Integer DayTue = getDayTue(sortedRecords);
+			System.err.println("IIT ML: new model (DayTue): " + DayTue);
+
+			// New model (DayWed)
+			Integer DayWed = getDayWed(sortedRecords);
+			System.err.println("IIT ML: new model (DayWed): " + DayWed);
+
+			// End new model
+
+			// (Weight)
+			Double weight = getWeight(visits);
+			System.err.println("IIT ML: (Weight): " + weight);
+
+			// (Height)
+			Double height = getHeight(visits);
+			System.err.println("IIT ML: (Height): " + height);
+
+			// (BMI) -- NB: If zero, return NA
+			System.err.println("IIT ML: (BMI): " + getBMI(height, weight));
+
+			// Gender (Male == 1 and Female == 2)
+			Integer patientGender = 0;
+			Integer female = getGenderFemale(demographics);
+			Integer male = getGenderMale(demographics);
+			if(male == 1) {
+				patientGender = 1;
+			}
+			if(female == 1) {
+				patientGender = 2;
+			}
+
+			// (GenderFemale)
+			System.err.println("IIT ML: (GenderFemale): " + female);
+
+			// (GenderMale)
+			System.err.println("IIT ML: (GenderMale): " + male);
+
+			// (PatientSourceOPD)
+			System.err.println("IIT ML: (PatientSourceOPD): " + getPatientSourceOPD(demographics));
+
+			// (PatientSourceOther)
+			System.err.println("IIT ML: (PatientSourceOther): " + getPatientSourceOther(demographics));
+
+			// (PatientSourceVCT)
+			System.err.println("IIT ML: (PatientSourceVCT): " + getPatientSourceVCT(demographics));
+
+			// (Age)
+			Long Age = getAgeYears(demographics);
+			System.err.println("IIT ML: (Age): " + Age);
+
+			// (MaritalStatusDivorced)
+			Integer MaritalStatusDivorced = getMaritalStatusDivorced(demographics, Age);
+			System.err.println("IIT ML: (MaritalStatusDivorced): " + MaritalStatusDivorced);
+
+			// (MaritalStatusMarried)
+			Integer MaritalStatusMarried = getMaritalStatusMarried(demographics, Age);
+			System.err.println("IIT ML: (MaritalStatusMarried): " + MaritalStatusMarried);
+
+			// (MaritalStatusMinor)
+			Integer MaritalStatusMinor = getMaritalStatusMinor(Age);
+			System.err.println("IIT ML: (MaritalStatusMinor): " + MaritalStatusMinor);
+
+			// (MaritalStatusOther)
+			Integer MaritalStatusOther = getMaritalStatusOther(demographics, Age);
+			System.err.println("IIT ML: (MaritalStatusOther): " + MaritalStatusOther);
+
+			// (MaritalStatusPolygamous)
+			Integer MaritalStatusPolygamous = getMaritalStatusPolygamous(demographics, Age);
+			System.err.println("IIT ML: (MaritalStatusPolygamous): " + MaritalStatusPolygamous);
+
+			// (MaritalStatusSingle)
+			Integer MaritalStatusSingle = getMaritalStatusSingle(demographics, Age);
+			System.err.println("IIT ML: (MaritalStatusSingle): " + MaritalStatusSingle);
+
+			// (MaritalStatusWidow)
+			Integer MaritalStatusWidow = getMaritalStatusWidow(demographics, Age);
+			System.err.println("IIT ML: (MaritalStatusWidow): " + MaritalStatusWidow);
+
+			// Standard Care, Fast Track,
+			// (DifferentiatedCarecommunityartdistributionhcwled)
+			System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionhcwled): " + getDifferentiatedCarecommunityartdistributionhcwled(visits));
+
+			// (DifferentiatedCarecommunityartdistributionpeerled)
+			System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionpeerled): " + getDifferentiatedCarecommunityartdistributionpeerled(visits));
+
+			// (DifferentiatedCareexpress)
+			System.err.println("IIT ML: (DifferentiatedCareexpress): " + getDifferentiatedCareexpress(visits));
+
+			// (DifferentiatedCarefacilityartdistributiongroup)
+			System.err.println("IIT ML: (DifferentiatedCarefacilityartdistributiongroup): " + getDifferentiatedCarefacilityartdistributiongroup(visits));
+
+			// (DifferentiatedCarefasttrack)
+			System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + getDifferentiatedCarefasttrack(visits));
+
+			// (DifferentiatedCarestandardcare)
+			System.err.println("IIT ML: (DifferentiatedCarestandardcare): " + getDifferentiatedCarestandardcare(visits));
+
+			// (StabilityAssessmentStable)
+			System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + getStabilityAssessmentStable(visits));
+
+			// (StabilityAssessmentUnstable)
+			System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + getStabilityAssessmentUnstable(visits));
+
+			// (most_recent_art_adherencefair)
+			System.err.println("IIT ML: (most_recent_art_adherencefair): " + getMostRecentArtAdherenceFair(visits));
+
+			// (most_recent_art_adherencegood)
+			System.err.println("IIT ML: (most_recent_art_adherencegood): " + getMostRecentArtAdherenceGood(visits));
+
+			// (most_recent_art_adherencepoor)
+			System.err.println("IIT ML: (most_recent_art_adherencepoor): " + getMostRecentArtAdherencePoor(visits));
+
+			// (Pregnantno)
+			System.err.println("IIT ML: (Pregnantno): " + getPregnantNo(visits, patientGender, Age));
+
+			// (PregnantNR)
+			System.err.println("IIT ML: (PregnantNR): " + getPregnantNR(patientGender, Age));
+
+			// (Pregnantyes)
+			System.err.println("IIT ML: (Pregnantyes): " + getPregnantYes(visits, patientGender, Age));
+
+			// (Breastfeedingno)
+			System.err.println("IIT ML: (Breastfeedingno): " + getBreastFeedingNo(visits, patientGender, Age));
+
+			// (BreastfeedingNR)
+			System.err.println("IIT ML: (BreastfeedingNR): " + getBreastFeedingNR(patientGender, Age));
+
+			// (Breastfeedingyes)
+			System.err.println("IIT ML: (Breastfeedingyes): " + getBreastFeedingYes(visits, patientGender, Age));
+
+			// (PopulationTypeGP)
+			System.err.println("IIT ML: (PopulationTypeGP): " + getPopulationTypeGP(demographics));
+
+			// (PopulationTypeKP)
+			System.err.println("IIT ML: (PopulationTypeKP): " + getPopulationTypeKP(demographics));
+
+			// (AHDNo)
+			System.err.println("IIT ML: (AHDNo): " + getAHDNo(visits, Age));
+
+			// (AHDYes)
+			System.err.println("IIT ML: (AHDYes): " + getAHDYes(visits, Age));
+
+			// (OptimizedHIVRegimenNo)
+			System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + getOptimizedHIVRegimenNo(pharmacy));
+
+			// (OptimizedHIVRegimenYes)
+			System.err.println("IIT ML: (OptimizedHIVRegimenYes): " + getOptimizedHIVRegimenYes(pharmacy));
+
+			// NB: Any number equal or above 200 is considered High Viral Load (HVL). Any below is LDL or suppressed or Low Viral Load (LVL)
+			// (most_recent_vlsuppressed)
+			System.err.println("IIT ML: (most_recent_vlsuppressed): " + getMostRecentVLsuppressed(lab));
+
+			// (most_recent_vlunsuppressed)
+			System.err.println("IIT ML: (n_tests_threeyears): " + getMostRecentVLunsuppressed(lab));
+
+			// (n_tests_threeyears)
+			Integer n_test_threeyears = getNtestsThreeYears(lab);
+			System.err.println("IIT ML: (n_tests_threeyears): " + n_test_threeyears);
+
+			// (n_hvl_threeyears)
+			Integer n_hvl_threeyears = getNHVLThreeYears(lab);
+			System.err.println("IIT ML: (n_hvl_threeyears): " + n_hvl_threeyears);
+
+			// (n_lvl_threeyears)
+			System.err.println("IIT ML: (n_lvl_threeyears): " + getNLVLThreeYears(lab));
+
+			// (recent_hvl_rate)
+			System.err.println("IIT ML: (recent_hvl_rate): " + getRecentHvlRate(n_hvl_threeyears, n_test_threeyears));
+
+			// (timeOnArt)
+			System.err.println("IIT ML: (timeOnArt): " + getTimeOnArt(art));
+
+			// Treatment Section
+			//Pharmacy
+			Set<Treatment> pharmTreatment = new HashSet<>();
+			// PatientPK(0), DispenseDate(1), ExpectedReturn(2), Drug(3), TreatmentType(4)
+			for (List<Object> ls : pharmacy) {
+				// Limit to last 400 days
+				Date dispenseDate = (Date) ls.get(1);
+				// Get the difference in days
+				long differenceInMilliseconds = now.getTime() - dispenseDate.getTime();
+				int differenceInDays = (int) (differenceInMilliseconds / (24 * 60 * 60 * 1000));
+				if (differenceInDays < 400) {
+					Treatment newTreatment = new Treatment();
+					newTreatment.setPatientID((Integer) ls.get(0));
+					newTreatment.setEncounterDate(dispenseDate);
+					newTreatment.setDrug((String) ls.get(3));
+					newTreatment.setTreatmentType((String) ls.get(4));
+					pharmTreatment.add(newTreatment);
+				}
+			}
+
+			System.err.println(
+					"IIT ML: Total number of regimens - nonfiltered (last 400 days): " + pharmTreatment.size());
+
+			// (num_hiv_regimens) -- Note: If zero, we show NA
+			System.err.println("IIT ML: (num_hiv_regimens): " + getNumHivRegimens(pharmTreatment));
+
+			// End Local Pull And Display
+
+			// Start Pulled Variables
 			patientPredictionVariables.put("Age", 0);
 			patientPredictionVariables.put("AHDNo", 0);
 			patientPredictionVariables.put("AHDYes", 0);
-			patientPredictionVariables.put("average_tca_last5", 0);
-			patientPredictionVariables.put("averagelateness", 0);
-			patientPredictionVariables.put("averagelateness_last10", 0);
-			patientPredictionVariables.put("averagelateness_last3", 0);
-			patientPredictionVariables.put("averagelateness_last5", 0);
+			patientPredictionVariables.put("average_tca_last5", average_tca_last5);
+			patientPredictionVariables.put("averagelateness", averagelateness);
+			patientPredictionVariables.put("averagelateness_last10", averagelateness_last10);
+			patientPredictionVariables.put("averagelateness_last3", averagelateness_last3);
+			patientPredictionVariables.put("averagelateness_last5", averagelateness_last5);
 			patientPredictionVariables.put("BMI", 0);
 			patientPredictionVariables.put("Breastfeedingno", 0);
 			patientPredictionVariables.put("BreastfeedingNR", 0);
 			patientPredictionVariables.put("Breastfeedingyes", 0);
-			patientPredictionVariables.put("DayFri", 0);
-			patientPredictionVariables.put("DayMon", 0);
-			patientPredictionVariables.put("DaySat", 0);
-			patientPredictionVariables.put("DaySun", 0);
-			patientPredictionVariables.put("DayThu", 0);
-			patientPredictionVariables.put("DayTue", 0);
-			patientPredictionVariables.put("DayWed", 0);
+			patientPredictionVariables.put("DayFri", DayFri);
+			patientPredictionVariables.put("DayMon", DayMon);
+			patientPredictionVariables.put("DaySat", DaySat);
+			patientPredictionVariables.put("DaySun", DaySun);
+			patientPredictionVariables.put("DayThu", DayThu);
+			patientPredictionVariables.put("DayTue", DayTue);
+			patientPredictionVariables.put("DayWed", DayWed);
 			patientPredictionVariables.put("DifferentiatedCarecommunityartdistributionhcwled", 0);
 			patientPredictionVariables.put("DifferentiatedCarecommunityartdistributionpeerled", 0);
 			patientPredictionVariables.put("DifferentiatedCareexpress", 0);
@@ -298,42 +854,42 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			patientPredictionVariables.put("DifferentiatedCarestandardcare", 0);
 			patientPredictionVariables.put("GenderFemale", 0);
 			patientPredictionVariables.put("GenderMale", 0);
-			patientPredictionVariables.put("late", 0);
-			patientPredictionVariables.put("late_last10", 0);
-			patientPredictionVariables.put("late_last3", 0);
-			patientPredictionVariables.put("late_last5", 0);
-			patientPredictionVariables.put("late_rate", 0);
-			patientPredictionVariables.put("late28", 0);
-			patientPredictionVariables.put("late28_rate", 0);
-			patientPredictionVariables.put("MaritalStatusDivorced", 0);
-			patientPredictionVariables.put("MaritalStatusMarried", 0);
-			patientPredictionVariables.put("MaritalStatusMinor", 0);
-			patientPredictionVariables.put("MaritalStatusOther", 0);
-			patientPredictionVariables.put("MaritalStatusPolygamous", 0);
-			patientPredictionVariables.put("MaritalStatusSingle", 0);
-			patientPredictionVariables.put("MaritalStatusWidow", 0);
-			patientPredictionVariables.put("MonthApr", 0);
-			patientPredictionVariables.put("MonthAug", 0);
-			patientPredictionVariables.put("MonthDec", 0);
-			patientPredictionVariables.put("MonthFeb", 0);
-			patientPredictionVariables.put("MonthJan", 0);
-			patientPredictionVariables.put("MonthJul", 0);
-			patientPredictionVariables.put("MonthJun", 0);
-			patientPredictionVariables.put("MonthMar", 0);
-			patientPredictionVariables.put("MonthMay", 0);
-			patientPredictionVariables.put("MonthNov", 0);
-			patientPredictionVariables.put("MonthOct", 0);
-			patientPredictionVariables.put("MonthSep", 0);
+			patientPredictionVariables.put("late", missed1);
+			patientPredictionVariables.put("late_last10", late_last10);
+			patientPredictionVariables.put("late_last3", late_last3);
+			patientPredictionVariables.put("late_last5", late_last5);
+			patientPredictionVariables.put("late_rate", late_rate);
+			patientPredictionVariables.put("late28", late28);
+			patientPredictionVariables.put("late28_rate", late28_rate);
+			patientPredictionVariables.put("MaritalStatusDivorced", MaritalStatusDivorced);
+			patientPredictionVariables.put("MaritalStatusMarried", MaritalStatusMarried);
+			patientPredictionVariables.put("MaritalStatusMinor", MaritalStatusMinor);
+			patientPredictionVariables.put("MaritalStatusOther", MaritalStatusOther);
+			patientPredictionVariables.put("MaritalStatusPolygamous", MaritalStatusPolygamous);
+			patientPredictionVariables.put("MaritalStatusSingle", MaritalStatusSingle);
+			patientPredictionVariables.put("MaritalStatusWidow", MaritalStatusWidow);
+			patientPredictionVariables.put("MonthApr", MonthApr);
+			patientPredictionVariables.put("MonthAug", MonthAug);
+			patientPredictionVariables.put("MonthDec", MonthDec);
+			patientPredictionVariables.put("MonthFeb", MonthFeb);
+			patientPredictionVariables.put("MonthJan", MonthJan);
+			patientPredictionVariables.put("MonthJul", MonthJul);
+			patientPredictionVariables.put("MonthJun", MonthJun);
+			patientPredictionVariables.put("MonthMar", MonthMar);
+			patientPredictionVariables.put("MonthMay", MonthMay);
+			patientPredictionVariables.put("MonthNov", MonthNov);
+			patientPredictionVariables.put("MonthOct", MonthOct);
+			patientPredictionVariables.put("MonthSep", MonthSep);
 			patientPredictionVariables.put("most_recent_art_adherencefair", 0);
 			patientPredictionVariables.put("most_recent_art_adherencegood", 0);
 			patientPredictionVariables.put("most_recent_art_adherencepoor", 0);
 			patientPredictionVariables.put("most_recent_vlsuppressed", 0);
 			patientPredictionVariables.put("most_recent_vlunsuppressed", 0);
-			patientPredictionVariables.put("n_appts", 0);
+			patientPredictionVariables.put("n_appts", n_appts);
 			patientPredictionVariables.put("n_hvl_threeyears", 0);
 			patientPredictionVariables.put("n_lvl_threeyears", 0);
 			patientPredictionVariables.put("n_tests_threeyears", 0);
-			patientPredictionVariables.put("NextAppointmentDate", 0);
+			patientPredictionVariables.put("NextAppointmentDate", NextAppointmentDate);
 			patientPredictionVariables.put("num_hiv_regimens", 0);
 			patientPredictionVariables.put("OptimizedHIVRegimenNo", 0);
 			patientPredictionVariables.put("OptimizedHIVRegimenYes", 0);
@@ -349,14 +905,14 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			patientPredictionVariables.put("StabilityAssessmentStable", 0);
 			patientPredictionVariables.put("StabilityAssessmentUnstable", 0);
 			patientPredictionVariables.put("timeOnArt", 0);
-			patientPredictionVariables.put("unscheduled_rate", 0);
-			patientPredictionVariables.put("visit_1", 0);
-			patientPredictionVariables.put("visit_2", 0);
-			patientPredictionVariables.put("visit_3", 0);
-			patientPredictionVariables.put("visit_4", 0);
-			patientPredictionVariables.put("visit_5", 0);
-			patientPredictionVariables.put("Weight", 0);
-
+			patientPredictionVariables.put("unscheduled_rate", unscheduled_rate);
+			patientPredictionVariables.put("visit_1", visit_1);
+			patientPredictionVariables.put("visit_2", visit_2);
+			patientPredictionVariables.put("visit_3", visit_3);
+			patientPredictionVariables.put("visit_4", visit_4);
+			patientPredictionVariables.put("visit_5", visit_5);
+			patientPredictionVariables.put("Weight", weight);
+			// End Pulled Variables
 
 			// Load model configs and variables
 			mlScoringRequestPayload.put("modelConfigs", modelConfigs);
