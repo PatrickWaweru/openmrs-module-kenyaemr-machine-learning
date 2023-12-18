@@ -1015,13 +1015,14 @@ public class MachineLearningRestController extends BaseRestController {
 				if (visitObject.get(1) != null) {
 					Date artStartDate = (Date) visitObject.get(1);
 					Date now = new Date();
-
-					Instant artInstant = artStartDate.toInstant();
-					Instant nowInstant = now.toInstant();
+					// Instant artInstant = artStartDate.toInstant();
+					// Instant nowInstant = now.toInstant();
 					// Get the age in years
 					// Duration duration = Duration.between(nowInstant, dobInstant);
 					// long years = duration.toDays() / 365;
-					long months = ChronoUnit.MONTHS.between(nowInstant, artInstant);
+					LocalDate artLocal = dateToLocalDate(artStartDate);
+					LocalDate nowLocal = dateToLocalDate(now);
+					long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, artLocal));
 					ret = months;
 				}
 			}
@@ -1180,12 +1181,14 @@ public class MachineLearningRestController extends BaseRestController {
 				Collections.reverse(labRev);
 				// Count number of tests for the last 3 years
 				Date now = new Date();
-				Instant nowInstant = now.toInstant();
+				// Instant nowInstant = now.toInstant();
+				LocalDate nowLocal = dateToLocalDate(now);
 				for(List<Object> labObject: labRev) {
 					if (labObject.get(1) != null) {
 						Date testDate = (Date) labObject.get(1);
-						Instant testInstant = testDate.toInstant();
-						long years = ChronoUnit.YEARS.between(nowInstant, testInstant);
+						//Instant testInstant = testDate.toInstant();
+						LocalDate testLocal = dateToLocalDate(testDate);
+						long years = Math.abs(ChronoUnit.YEARS.between(nowLocal, testLocal));
 						if(years <= 3) {
 							ret++;
 						}
@@ -1207,12 +1210,14 @@ public class MachineLearningRestController extends BaseRestController {
 				Collections.reverse(labRev);
 				// Count number of tests for the last 3 years
 				Date now = new Date();
-				Instant nowInstant = now.toInstant();
+				// Instant nowInstant = now.toInstant();
+				LocalDate nowLocal = dateToLocalDate(now);
 				for(List<Object> labObject: labRev) {
 					if (labObject.get(1) != null && labObject.get(2) != null) {
 						Date testDate = (Date) labObject.get(1);
-						Instant testInstant = testDate.toInstant();
-						long years = ChronoUnit.YEARS.between(nowInstant, testInstant);
+						// Instant testInstant = testDate.toInstant();
+						LocalDate testLocal = dateToLocalDate(testDate);
+						long years = Math.abs(ChronoUnit.YEARS.between(nowLocal, testLocal));
 						String result = (String) labObject.get(2);
 						if(years <= 3 && getIntegerValue(result.trim()) >= 200) {
 							ret++;
@@ -1235,12 +1240,14 @@ public class MachineLearningRestController extends BaseRestController {
 				Collections.reverse(labRev);
 				// Count number of tests for the last 3 years
 				Date now = new Date();
-				Instant nowInstant = now.toInstant();
+				// Instant nowInstant = now.toInstant();
+				LocalDate nowLocal = dateToLocalDate(now);
 				for(List<Object> labObject: labRev) {
 					if (labObject.get(1) != null && labObject.get(2) != null) {
 						Date testDate = (Date) labObject.get(1);
-						Instant testInstant = testDate.toInstant();
-						long years = ChronoUnit.YEARS.between(nowInstant, testInstant);
+						//Instant testInstant = testDate.toInstant();
+						LocalDate testLocal = dateToLocalDate(testDate);
+						long years = Math.abs(ChronoUnit.YEARS.between(nowLocal, testLocal));
 						String result = (String) labObject.get(2);
 						if(years <= 3 && (getIntegerValue(result.trim()) < 200 || result.trim().equalsIgnoreCase("LDL"))) {
 							ret++;
@@ -1432,7 +1439,7 @@ public class MachineLearningRestController extends BaseRestController {
 					int artPos = -1;
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
-							System.out.println("Position of 'ART': " + i);
+							System.out.println("IIT ML: Position of 'ART': " + i);
 							break;
 						}
 					}
@@ -1474,7 +1481,7 @@ public class MachineLearningRestController extends BaseRestController {
 					int artPos = -1;
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
-							System.out.println("Position of 'ART': " + i);
+							System.out.println("IIT ML: Position of 'ART': " + i);
 							break;
 						}
 					}
@@ -1516,7 +1523,7 @@ public class MachineLearningRestController extends BaseRestController {
 					int artPos = -1;
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
-							System.out.println("Position of 'ART': " + i);
+							System.out.println("IIT ML: Position of 'ART': " + i);
 							break;
 						}
 					}
@@ -1711,10 +1718,12 @@ public class MachineLearningRestController extends BaseRestController {
 		if(demographics != null) {
 			// Get the last appointment
 			if (demographics.size() > 0) {
-				List<Object> genderObject = demographics.get(demographics.size() - 1);
-				String gender = (String) genderObject.get(4);
-				if(gender.trim().equalsIgnoreCase("single") && Age > 15){
-					ret = 1;
+				List<Object> maritalObject = demographics.get(demographics.size() - 1);
+				if(maritalObject.get(4) != null) {
+					String gender = (String) maritalObject.get(4);
+					if (gender.trim().equalsIgnoreCase("single") && Age > 15) {
+						ret = 1;
+					}
 				}
 			}
 		}
@@ -1811,12 +1820,14 @@ public class MachineLearningRestController extends BaseRestController {
 				if(maritalObject.get(2) != null) {
 					Date DOB = (Date) maritalObject.get(2);
 					Date now = new Date();
-					Instant dobInstant = DOB.toInstant();
-					Instant nowInstant = now.toInstant();
+					// Instant dobInstant = DOB.toInstant();
+					// Instant nowInstant = now.toInstant();
 					// Get the age in years
 					// Duration duration = Duration.between(nowInstant, dobInstant);
 					// long years = duration.toDays() / 365;
-					long years = ChronoUnit.YEARS.between(nowInstant, dobInstant);
+					LocalDate dobLocal = dateToLocalDate(DOB);
+					LocalDate nowLocal = dateToLocalDate(now);
+					long years = Math.abs(ChronoUnit.YEARS.between(nowLocal, dobLocal));
 					ret = years;
 				}
 			}
@@ -1824,15 +1835,23 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
+	private LocalDate dateToLocalDate(Date dateToConvert) {
+		return Instant.ofEpochMilli(dateToConvert.getTime())
+				.atZone(ZoneId.systemDefault())
+				.toLocalDate();
+	}
+
 	private Integer getPatientSourceVCT(List<List<Object>> demographics) {
 		Integer ret = 0;
 		if(demographics != null) {
 			// Get the last appointment
 			if (demographics.size() > 0) {
-				List<Object> genderObject = demographics.get(demographics.size() - 1);
-				String gender = (String) genderObject.get(3);
-				if(gender.trim().equalsIgnoreCase("vct")) {
-					ret = 1;
+				List<Object> sourceObject = demographics.get(demographics.size() - 1);
+				if(sourceObject.get(3) != null) {
+					String source = (String) sourceObject.get(3);
+					if (source.trim().equalsIgnoreCase("vct")) {
+						ret = 1;
+					}
 				}
 			}
 		}
@@ -1844,10 +1863,12 @@ public class MachineLearningRestController extends BaseRestController {
 		if(demographics != null) {
 			// Get the last appointment
 			if (demographics.size() > 0) {
-				List<Object> genderObject = demographics.get(demographics.size() - 1);
-				String gender = (String) genderObject.get(3);
-				if(!gender.trim().equalsIgnoreCase("opd") && !gender.trim().equalsIgnoreCase("vct")) {
-					ret = 1;
+				List<Object> sourceObject = demographics.get(demographics.size() - 1);
+				if(sourceObject.get(3) != null) {
+					String source = (String) sourceObject.get(3);
+					if (!source.trim().equalsIgnoreCase("opd") && !source.trim().equalsIgnoreCase("vct")) {
+						ret = 1;
+					}
 				}
 			}
 		}
@@ -1859,10 +1880,12 @@ public class MachineLearningRestController extends BaseRestController {
 		if(demographics != null) {
 			// Get the last appointment
 			if (demographics.size() > 0) {
-				List<Object> genderObject = demographics.get(demographics.size() - 1);
-				String gender = (String) genderObject.get(3);
-				if(gender.trim().equalsIgnoreCase("opd")) {
-					ret = 1;
+				List<Object> sourceObject = demographics.get(demographics.size() - 1);
+				if(sourceObject.get(3) != null) {
+					String source = (String) sourceObject.get(3);
+					if (source.trim().equalsIgnoreCase("opd")) {
+						ret = 1;
+					}
 				}
 			}
 		}
@@ -1875,9 +1898,11 @@ public class MachineLearningRestController extends BaseRestController {
 			// Get the last appointment
 			if (demographics.size() > 0) {
 				List<Object> genderObject = demographics.get(demographics.size() - 1);
-				String gender = (String) genderObject.get(1);
-				if(gender.trim().equalsIgnoreCase("female")) {
-					ret = 1;
+				if(genderObject.get(1) != null) {
+					String gender = (String) genderObject.get(1);
+					if (gender.trim().equalsIgnoreCase("female")) {
+						ret = 1;
+					}
 				}
 			}
 		}
@@ -1890,9 +1915,11 @@ public class MachineLearningRestController extends BaseRestController {
 			// Get the last appointment
 			if (demographics.size() > 0) {
 				List<Object> genderObject = demographics.get(demographics.size() - 1);
-				String gender = (String) genderObject.get(1);
-				if(gender.trim().equalsIgnoreCase("male")) {
-					ret = 1;
+				if(genderObject.get(1) != null) {
+					String gender = (String) genderObject.get(1);
+					if (gender.trim().equalsIgnoreCase("male")) {
+						ret = 1;
+					}
 				}
 			}
 		}
