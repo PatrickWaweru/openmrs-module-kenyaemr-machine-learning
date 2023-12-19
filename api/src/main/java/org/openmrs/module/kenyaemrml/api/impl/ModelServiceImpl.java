@@ -252,6 +252,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 
 			String artQuery = "CALL sp_iitml_get_patient_ART(" + patientID + ")";
 
+			String lastETLUpdateQuery = "CALL sp_iitml_get_last_dwapi_etl_update()";
+
 			List<List<Object>> visits = administrationService
 					.executeSQL(visitsQuery, true); // PatientPK(0), VisitDate(1), NextAppointmentDate(2), VisitType(3), Height(4), Weight(5),
 			// Pregnant(6), DiffentiatedCare(7), StabilityAssessment(8), Adherence(9), WhoStage(10), BreastFeeding(11)
@@ -267,12 +269,16 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			List<List<Object>> art = administrationService
 					.executeSQL(artQuery,
 							true); // PatientPK(0), StartARTDate
+			List<List<Object>> lastETLUpdate = administrationService
+					.executeSQL(lastETLUpdateQuery,
+							true); // INDICATOR_NAME(0), INDICATOR_VALUE(1), INDICATOR_MONTH(2)
 
 			System.err.println("IIT ML: Got visits: " + visits.size());
 			System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
 			System.err.println("IIT ML: Got demographics: " + demographics.size());
 			System.err.println("IIT ML: Got lab: " + lab.size());
 			System.err.println("IIT ML: Got ART: " + art.size());
+			System.err.println("IIT ML: DWAPI ETL last update: " + lastETLUpdate.size());
 			// January 2019 reference date
 			Date jan2019 = new Date(119, 0, 1);
 			Date now = new Date();
@@ -312,6 +318,10 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			patientPredictionVariables.put("births", 0);
 
 			// End Facility Profile Matrix
+
+			// Last ETL Update
+			String lastETLUpdateSt = getLastETLUpdate(lastETLUpdate);
+			System.err.println("IIT ML: Last time the ETL was updated (lastETLUpdateSt): " + lastETLUpdateSt);
 
 			// Start Local Pull And Display
 			// Now that we have visits and pharmacy we can filter the data and apply logic
@@ -1007,6 +1017,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						try {
 							patientRiskScore.setPayload(payload);
 							patientRiskScore = extractPayload(patientRiskScore, mlScoringRequestPayload);
+
+							patientRiskScore.setLastDwapiEtlUpdate(lastETLUpdateSt);
 
 							String facilityMflCode = MLUtils.getDefaultMflCode();
 							patientRiskScore.setMflCode(facilityMflCode);
@@ -2909,6 +2921,31 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			// Conversion failed, return null
 			return null;
 		}
+	}
+
+	/**
+	 * Returns the last time the DWAPI ETL was updated
+	 * @return String -- Date or Error
+	 */
+	private String getLastETLUpdate(List<List<Object>> updateData){
+		String ret = "Never Updated";
+		try {
+			if (updateData != null) {
+				// Get the last record
+				if (updateData.size() > 0) {
+					List<Object> updateObject = updateData.get(updateData.size() - 1);
+					if (updateObject.get(1) != null) {
+						Date updateDate = (Date) updateObject.get(1);
+						SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+						ret = sdf.format(updateDate);
+					}
+				}
+			}
+		} catch(Exception ex) {
+			System.err.println("IIT ML: Error getting the last time the DWAPI ETL was updated");
+			ex.printStackTrace();
+		}
+		return(ret);
 	}
 	// END variable calculations
 }

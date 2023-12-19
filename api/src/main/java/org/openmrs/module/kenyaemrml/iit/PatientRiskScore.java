@@ -135,7 +135,8 @@ public class PatientRiskScore extends BaseOpenmrsData implements Serializable {
 
 	private String mflCode;
 	private String cccNumber;
-	
+	private String lastDwapiEtlUpdate;
+
 	@Override
 	public Integer getId() {
 		return id;
@@ -898,6 +899,14 @@ public class PatientRiskScore extends BaseOpenmrsData implements Serializable {
 
 	public void setWeight(String weight) {
 		Weight = weight;
+	}
+
+	public String getLastDwapiEtlUpdate() {
+		return lastDwapiEtlUpdate;
+	}
+
+	public void setLastDwapiEtlUpdate(String lastDwapiEtlUpdate) {
+		this.lastDwapiEtlUpdate = lastDwapiEtlUpdate;
 	}
 
 	@Override

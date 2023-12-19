@@ -20,6 +20,7 @@
 
 		<property name="mflCode" type="java.lang.String" column="mflCode"/>
 		<property name="cccNumber" type="java.lang.String" column="cccNumber"/>
+		<property name="lastDwapiEtlUpdate" type="java.lang.String" column="last_dwapi_etl_update"/>
 
 		<property name="Age" type="java.lang.String" column="Age"/>
 		<property name="AHDNo" type="java.lang.String" column="AHDNo"/>

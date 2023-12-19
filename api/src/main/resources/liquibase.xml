@@ -572,18 +572,6 @@
         </addColumn>
     </changeSet>
 
-    <changeSet author="pwaweru" id="kenyaemr-ML-4738374838-153630" runOnChange="true">
-        <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="0">
-                SELECT COUNT(*)
-                FROM information_schema.routines
-                WHERE routine_name = 'poff'
-                AND routine_type = 'PROCEDURE'
-            </sqlCheck>
-        </preConditions>
-        <sqlFile path="sql/test.sql" splitStatements="true" endDelimiter="\$\$" stripComments="true"/>
-    </changeSet>
-
     <!-- Add IIT ML stored procedures - patient visits to the IIT ML table -->
     <changeSet author="pwaweru" id="kenyaemr-ML-sp-patient-visits-20231218-153630" runOnChange="true">
         <preConditions onFail="MARK_RAN">
@@ -647,6 +635,36 @@
             </sqlCheck>
         </preConditions>
         <sqlFile path="sql/sp_iitml_get_patient_ART.sql" splitStatements="true" endDelimiter="\$\$" stripComments="true"/>
+    </changeSet>
+
+    <!-- Add IIT ML stored procedures - Last DWAPI ETL Update Date to the IIT ML table -->
+    <changeSet author="pwaweru" id="kenyaemr-ML-sp-dwapi-etl-update-20231219-144630" runOnChange="true">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM information_schema.routines
+                WHERE routine_name = 'sp_iitml_get_last_dwapi_etl_update'
+                AND routine_type = 'PROCEDURE'
+            </sqlCheck>
+        </preConditions>
+        <sqlFile path="sql/sp_iitml_get_last_dwapi_etl_update.sql" splitStatements="true" endDelimiter="\$\$" stripComments="true"/>
+    </changeSet>
+
+    <!-- Add last_dwapi_etl_update field to the ML table -->
+    <changeSet author="pwaweru" id="kenyaemr-ML-description-field-20220726-123630">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="kenyaemr_ml_patient_risk_score"/>
+            <not>
+                <columnExists columnName="last_dwapi_etl_update" tableName="kenyaemr_ml_patient_risk_score"/>
+            </not>
+        </preConditions>
+        <comment>Adding last_dwapi_etl_update column</comment>
+        <addColumn tableName="kenyaemr_ml_patient_risk_score" >
+            <column name="last_dwapi_etl_update"
+                    type="varchar(128)" >
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
     </changeSet>
  
 </databaseChangeLog>
