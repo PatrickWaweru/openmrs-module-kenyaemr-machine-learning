@@ -1,5 +1,6 @@
-DELIMITER $$
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_iitml_get_patient_demographics`(
+DROP PROCEDURE IF EXISTS sp_iitml_get_patient_demographics;
+$$
+CREATE PROCEDURE `sp_iitml_get_patient_demographics`(
 	IN in_patient_id int
 )
 BEGIN
@@ -51,5 +52,5 @@ where unique_patient_no is not null and
 	d.patient_id = in_patient_id
 group by d.patient_id
 order by d.patient_id;
-END$$
-DELIMITER ;
+END
+$$

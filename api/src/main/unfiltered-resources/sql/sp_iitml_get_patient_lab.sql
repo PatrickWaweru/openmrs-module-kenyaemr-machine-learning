@@ -1,5 +1,6 @@
-DELIMITER $$
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_iitml_get_patient_lab`(
+DROP PROCEDURE IF EXISTS sp_iitml_get_patient_lab;
+$$
+CREATE PROCEDURE `sp_iitml_get_patient_lab`(
 	IN in_patient_id int
 )
 BEGIN
@@ -83,5 +84,5 @@ from dwapi_etl.etl_laboratory_extract l
 where d.unique_patient_no is not null and
 d.patient_id = in_patient_id
 order by ReportedByDate asc;
-END$$
-DELIMITER ;
+END
+$$

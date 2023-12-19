@@ -1,5 +1,6 @@
-DELIMITER $$
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_iitml_get_patient_ART`(
+DROP PROCEDURE IF EXISTS sp_iitml_get_patient_ART;
+$$
+CREATE PROCEDURE `sp_iitml_get_patient_ART`(
 	IN in_patient_id int
 )
 BEGIN
@@ -205,5 +206,5 @@ where d.unique_patient_no is not null and
 group by d.patient_id
 having min(hiv.visit_date) is not null
    and StartARTDate is not null;
-END$$
-DELIMITER ;
+END
+$$

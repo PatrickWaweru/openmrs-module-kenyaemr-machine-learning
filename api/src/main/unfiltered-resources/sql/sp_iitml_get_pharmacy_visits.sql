@@ -1,5 +1,6 @@
-DELIMITER $$
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_iitml_get_pharmacy_visits`(
+DROP PROCEDURE IF EXISTS sp_iitml_get_pharmacy_visits;
+$$
+CREATE PROCEDURE `sp_iitml_get_pharmacy_visits`(
 	IN in_patient_id int
 )
 BEGIN
@@ -162,5 +163,5 @@ where unique_patient_no is not null
   and drugreg is not null
   and d.patient_id = in_patient_id
 order by ph.patient_id, ph.DispenseDate;
-END$$
-DELIMITER ;
+END
+$$

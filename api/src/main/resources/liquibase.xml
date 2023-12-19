@@ -572,6 +572,18 @@
         </addColumn>
     </changeSet>
 
+    <changeSet author="pwaweru" id="kenyaemr-ML-4738374838-153630" runOnChange="true">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM information_schema.routines
+                WHERE routine_name = 'poff'
+                AND routine_type = 'PROCEDURE'
+            </sqlCheck>
+        </preConditions>
+        <sqlFile path="sql/test.sql" splitStatements="true" endDelimiter="\$\$" stripComments="true"/>
+    </changeSet>
+
     <!-- Add IIT ML stored procedures - patient visits to the IIT ML table -->
     <changeSet author="pwaweru" id="kenyaemr-ML-sp-patient-visits-20231218-153630" runOnChange="true">
         <preConditions onFail="MARK_RAN">
@@ -582,7 +594,7 @@
                 AND routine_type = 'PROCEDURE'
             </sqlCheck>
         </preConditions>
-        <sqlFile path="sql/sp_iitml_get_visits.sql"/>
+        <sqlFile path="sql/sp_iitml_get_visits.sql" splitStatements="true" endDelimiter="\$\$" stripComments="true"/>
     </changeSet>
 
     <!-- Add IIT ML stored procedures - pharmacy visits to the IIT ML table -->
@@ -595,7 +607,7 @@
                 AND routine_type = 'PROCEDURE'
             </sqlCheck>
         </preConditions>
-        <sqlFile path="sql/sp_iitml_get_pharmacy_visits.sql"/>
+        <sqlFile path="sql/sp_iitml_get_pharmacy_visits.sql" splitStatements="true" endDelimiter="\$\$" stripComments="true"/>
     </changeSet>
 
     <!-- Add IIT ML stored procedures - patient lab to the IIT ML table -->
@@ -608,7 +620,7 @@
                 AND routine_type = 'PROCEDURE'
             </sqlCheck>
         </preConditions>
-        <sqlFile path="sql/sp_iitml_get_patient_lab.sql"/>
+        <sqlFile path="sql/sp_iitml_get_patient_lab.sql" splitStatements="true" endDelimiter="\$\$" stripComments="true"/>
     </changeSet>
 
     <!-- Add IIT ML stored procedures - patient demographics to the IIT ML table -->
@@ -621,7 +633,7 @@
                 AND routine_type = 'PROCEDURE'
             </sqlCheck>
         </preConditions>
-        <sqlFile path="sql/sp_iitml_get_patient_demographics.sql"/>
+        <sqlFile path="sql/sp_iitml_get_patient_demographics.sql" splitStatements="true" endDelimiter="\$\$" stripComments="true"/>
     </changeSet>
 
     <!-- Add IIT ML stored procedures - patient ART to the IIT ML table -->
@@ -634,7 +646,7 @@
                 AND routine_type = 'PROCEDURE'
             </sqlCheck>
         </preConditions>
-        <sqlFile path="sql/sp_iitml_get_patient_ART.sql"/>
+        <sqlFile path="sql/sp_iitml_get_patient_ART.sql" splitStatements="true" endDelimiter="\$\$" stripComments="true"/>
     </changeSet>
  
 </databaseChangeLog>

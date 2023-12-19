@@ -1,5 +1,6 @@
-DELIMITER $$
-CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_iitml_get_visits`(
+DROP PROCEDURE IF EXISTS sp_iitml_get_visits;
+$$
+CREATE PROCEDURE `sp_iitml_get_visits`(
 	IN in_patient_id int
 )
 BEGIN
@@ -81,5 +82,5 @@ where d.unique_patient_no is not null
   and fup.next_appointment_date is not null
   and fup.visit_id is not null
   and d.patient_id = in_patient_id;
-END$$
-DELIMITER ;
+END
+$$
