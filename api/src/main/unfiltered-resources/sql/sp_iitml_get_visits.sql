@@ -81,6 +81,7 @@ where d.unique_patient_no is not null
   and fup.visit_date > '1990-01-01'
   and fup.next_appointment_date is not null
   and fup.visit_id is not null
-  and d.patient_id = in_patient_id;
+  and d.patient_id = in_patient_id
+order by fup.visit_date asc;
 END
 $$

@@ -666,5 +666,18 @@
             </column>
         </addColumn>
     </changeSet>
+
+    <!-- Add IIT ML stored procedures - patient CD4 count to the IIT ML table -->
+    <changeSet author="pwaweru" id="kenyaemr-ML-sp-patient-cd4-count-20231220-114630" runOnChange="true">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM information_schema.routines
+                WHERE routine_name = 'sp_iitml_get_patient_CD4count'
+                AND routine_type = 'PROCEDURE'
+            </sqlCheck>
+        </preConditions>
+        <sqlFile path="sql/sp_iitml_get_patient_CD4count.sql" splitStatements="true" endDelimiter="\$\$" stripComments="true"/>
+    </changeSet>
  
 </databaseChangeLog>

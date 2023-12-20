@@ -157,6 +157,6 @@ from (SELECT *
 where unique_patient_no is not null
   and drugreg is not null
   and d.patient_id = in_patient_id
-order by ph.patient_id, ph.DispenseDate;
+order by ph.visit_date asc;
 END
 $$

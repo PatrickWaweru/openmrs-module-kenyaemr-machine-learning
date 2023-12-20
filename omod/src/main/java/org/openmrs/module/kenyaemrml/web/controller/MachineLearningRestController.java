@@ -449,7 +449,8 @@ public class MachineLearningRestController extends BaseRestController {
 	public Object variableTest(HttpServletRequest request) {
 		try {
 			// List<Integer> patients = Arrays.asList(6559, 9261, 9800, 9895, 10705, 15219, 15361, 15723, 16712, 16856, 34089); // Bomu DB
-			List<Integer> patients = Arrays.asList(3980, 3979, 3978, 3977, 3976, 3975, 3974, 3973, 3972, 3971, 3970, 3969, 3968, 3967, 3966, 3965, 3964, 3963, 3962, 3961); // Mukuyuni DB
+			List<Integer> patients = Arrays.asList(27, 28, 30, 31, 32, 34, 35, 38, 39, 42, 44, 45, 49, 51, 52); // Mukuyuni DB
+			// List<Integer> patients = Arrays.asList(3980, 3979, 3978, 3977, 3976, 3975, 3974, 3973, 3972, 3971, 3970, 3969, 3968, 3967, 3966, 3965, 3964, 3963, 3962, 3961); // Mukuyuni DB
 			for(Integer patientID : patients) {
 				try {
 					// REF: https://github.com/palladiumkenya/DWAPI-Queries/blob/dwapi-etl/DWAPI_New_Extracts/Patient.sql
@@ -457,6 +458,7 @@ public class MachineLearningRestController extends BaseRestController {
 					// REF: https://raw.githubusercontent.com/palladiumkenya/DWAPI-Queries/dwapi-etl/DWAPI_New_Extracts/PatientPharmacy.sql
 					// REF: https://raw.githubusercontent.com/palladiumkenya/DWAPI-Queries/dwapi-etl/DWAPI_New_Extracts/PatientsLab.sql
 					// REF: https://raw.githubusercontent.com/palladiumkenya/DWAPI-Queries/dwapi-etl/DWAPI_New_Extracts/PatientArt.sql
+					// REF: https://github.com/palladiumkenya/DWAPI-Queries/blob/master/DWAPI_New_Extracts/patientbaselines.sql
 					// Patient 9895
 					long startTime = System.currentTimeMillis();
 					long stopTime = 0L;
@@ -486,6 +488,8 @@ public class MachineLearningRestController extends BaseRestController {
 
 					String lastETLUpdateQuery = "CALL sp_iitml_get_last_dwapi_etl_update()";
 
+					String cd4Query = "CALL sp_iitml_get_patient_CD4count(" + patientID + ")";
+
 					List<List<Object>> visits = administrationService
 							.executeSQL(visitsQuery, true); // PatientPK(0), VisitDate(1), NextAppointmentDate(2), VisitType(3), Height(4), Weight(5),
 							// Pregnant(6), DiffentiatedCare(7), StabilityAssessment(8), Adherence(9), WhoStage(10), BreastFeeding(11)
@@ -504,13 +508,17 @@ public class MachineLearningRestController extends BaseRestController {
 					List<List<Object>> lastETLUpdate = administrationService
 							.executeSQL(lastETLUpdateQuery,
 									true); // INDICATOR_NAME(0), INDICATOR_VALUE(1), INDICATOR_MONTH(2)
+					List<List<Object>> cd4Counter = administrationService
+							.executeSQL(cd4Query,
+									true); // PatientPK(0), lastcd4(1)
 
 					System.err.println("IIT ML: Got visits: " + visits.size());
 					System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
 					System.err.println("IIT ML: Got demographics: " + demographics.size());
 					System.err.println("IIT ML: Got lab: " + lab.size());
 					System.err.println("IIT ML: Got ART: " + art.size());
-					System.err.println("IIT ML: DWAPI ETL last update: " + lastETLUpdate.size());
+					System.err.println("IIT ML: Got DWAPI ETL last update: " + lastETLUpdate.size());
+					System.err.println("IIT ML: Got Last CD4 count: " + cd4Counter.size());
 
 					// January 2019 reference date
 					Date jan2019 = new Date(119, 0, 1);
@@ -636,6 +644,7 @@ public class MachineLearningRestController extends BaseRestController {
 					List<Appointment> sortedRecords = sortAppointmentsByEncounterDate(allAppts);
 					List<Integer> missedRecord = calculateLateness(sortedRecords);
 
+					System.err.println("IIT ML: Appointments: " + sortedRecords);
 					System.err.println("IIT ML: Missed before: " + missedRecord);
 
 					Integer missed1 = getMissed1(missedRecord);
@@ -928,10 +937,10 @@ public class MachineLearningRestController extends BaseRestController {
 					System.err.println("IIT ML: (PopulationTypeKP): " + getPopulationTypeKP(demographics));
 
 					// (AHDNo)
-					System.err.println("IIT ML: (AHDNo): " + getAHDNo(visits, Age));
+					System.err.println("IIT ML: (AHDNo): " + getAHDNo(visits, cd4Counter, Age));
 
 					// (AHDYes)
-					System.err.println("IIT ML: (AHDYes): " + getAHDYes(visits, Age));
+					System.err.println("IIT ML: (AHDYes): " + getAHDYes(visits, cd4Counter, Age));
 
 					// (OptimizedHIVRegimenNo)
 					System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + getOptimizedHIVRegimenNo(pharmacy));
@@ -1087,23 +1096,27 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private String getAHDNo(List<List<Object>> visits, Long Age) {
+	private String getAHDNo(List<List<Object>> visits, List<List<Object>> cd4count, Long Age) {
 		String ret = "NA";
-		if(visits != null) {
+		if(visits != null && cd4count != null) {
 			// Get the last visit
-			if (visits.size() > 0) {
+			if (visits.size() > 0 && cd4count.size() > 0) {
 				List<Object> visitObject = visits.get(visits.size() - 1);
-				// If WHO Stage in (1,2) and Age six and above, then 1, if Age five or below or
-				// WHO stage in (3,4), then 0, if Age over 6 and WHO Stage is NULL, then NA
-				if (visitObject.get(10) != null) {
+				List<Object> cd4Object = cd4count.get(cd4count.size() - 1);
+				// If WHO Stage in (1,2) or CD4 COUNT is greater than 200  and Age six and above, then 1,
+				// if Age five or below or WHO stage in (3,4) or CD4 COUNT is less than or equal to 200, then 0, if Age over 6 and WHO Stage is NULL, then NA
+				if (visitObject.get(10) != null && cd4Object.get(1) != null) {
 					String whoStage = (String) visitObject.get(10);
+					String patientCD4st = (String) cd4Object.get(1);
+					patientCD4st = patientCD4st.trim().toLowerCase();
 					whoStage = whoStage.trim().toLowerCase();
 					Integer whoStageInt = getIntegerValue(whoStage);
-					if((whoStageInt == 1 || whoStageInt == 2) && Age >= 6) {
+					Integer patientCD4 = getIntegerValue(patientCD4st);
+					if((((whoStageInt == 1 || whoStageInt == 2)) || patientCD4 > 200)  && Age >= 6) {
 						ret = "1";
 						return(ret);
 					}
-					if((whoStageInt == 3 || whoStageInt == 4) && Age <= 5) {
+					if((((whoStageInt == 3 || whoStageInt == 4)) || patientCD4 <= 200) && Age <= 5) {
 						ret = "0";
 						return(ret);
 					}
@@ -1113,23 +1126,27 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private String getAHDYes(List<List<Object>> visits, Long Age) {
+	private String getAHDYes(List<List<Object>> visits, List<List<Object>> cd4count, Long Age) {
 		String ret = "NA";
-		if(visits != null) {
+		if(visits != null && cd4count != null) {
 			// Get the last visit
-			if (visits.size() > 0) {
+			if (visits.size() > 0 && cd4count.size() > 0) {
 				List<Object> visitObject = visits.get(visits.size() - 1);
-				// If WHO Stage in (3,4) or Age five or below, then 1, if Age is six or
-				// over and WHO stage in (1,2), then 0, if Age 6 or over and WHO Stage is NULL, then NA
-				if (visitObject.get(10) != null) {
+				List<Object> cd4Object = cd4count.get(cd4count.size() - 1);
+				// If WHO Stage in (3,4) or Age five or below or CD4 Count is less than or equal to 200, then 1,
+				// if Age is six or over and WHO stage in (1,2) or CD4count is greater than 200, then 0, if Age 6 or over and WHO Stage is NULL, then NA
+				if (visitObject.get(10) != null && cd4Object.get(1) != null) {
 					String whoStage = (String) visitObject.get(10);
+					String patientCD4st = (String) cd4Object.get(1);
+					patientCD4st = patientCD4st.trim().toLowerCase();
 					whoStage = whoStage.trim().toLowerCase();
 					Integer whoStageInt = getIntegerValue(whoStage);
-					if((whoStageInt == 3 || whoStageInt == 4) && Age <= 5) {
+					Integer patientCD4 = getIntegerValue(patientCD4st);
+					if((((whoStageInt == 3 || whoStageInt == 4)) || patientCD4 <= 200) && Age <= 5) {
 						ret = "1";
 						return(ret);
 					}
-					if((whoStageInt == 1 || whoStageInt == 2) && Age >= 6) {
+					if((((whoStageInt == 1 || whoStageInt == 2)) || patientCD4 > 200) && Age >= 6) {
 						ret = "0";
 						return(ret);
 					}
@@ -1991,7 +2008,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.JANUARY) ? 1 : 0;
+				ret = (monthOfYear == Calendar.JANUARY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2005,7 +2022,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.FEBRUARY) ? 1 : 0;
+				ret = (monthOfYear == Calendar.FEBRUARY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2019,7 +2036,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.MARCH) ? 1 : 0;
+				ret = (monthOfYear == Calendar.MARCH) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2033,7 +2050,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = monthOfYear == Month.APRIL ? 1: 0;
+				ret = monthOfYear == Calendar.APRIL ? 1: 0;
 			}
 		}
 		return(ret);
@@ -2047,7 +2064,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.MAY) ? 1 : 0;
+				ret = (monthOfYear == Calendar.MAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2061,7 +2078,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.JUNE) ? 1 : 0;
+				ret = (monthOfYear == Calendar.JUNE) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2075,7 +2092,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.JULY) ? 1 : 0;
+				ret = (monthOfYear == Calendar.JULY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2089,7 +2106,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.AUGUST) ? 1 : 0;
+				ret = (monthOfYear == Calendar.AUGUST) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2103,7 +2120,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.SEPTEMBER) ? 1 : 0;
+				ret = (monthOfYear == Calendar.SEPTEMBER) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2117,7 +2134,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = monthOfYear == Month.OCTOBER ? 1: 0;
+				ret = monthOfYear == Calendar.OCTOBER ? 1: 0;
 			}
 		}
 		return(ret);
@@ -2131,7 +2148,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.NOVEMBER) ? 1 : 0;
+				ret = (monthOfYear == Calendar.NOVEMBER) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2145,7 +2162,7 @@ public class MachineLearningRestController extends BaseRestController {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.DECEMBER) ? 1 : 0;
+				ret = (monthOfYear == Calendar.DECEMBER) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2158,8 +2175,8 @@ public class MachineLearningRestController extends BaseRestController {
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 1) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.MONDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2172,8 +2189,8 @@ public class MachineLearningRestController extends BaseRestController {
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 2) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.TUESDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2186,8 +2203,8 @@ public class MachineLearningRestController extends BaseRestController {
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 3) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.WEDNESDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2200,8 +2217,8 @@ public class MachineLearningRestController extends BaseRestController {
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 4) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.THURSDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2214,8 +2231,8 @@ public class MachineLearningRestController extends BaseRestController {
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 5) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.FRIDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2228,8 +2245,8 @@ public class MachineLearningRestController extends BaseRestController {
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 6) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.SATURDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2242,8 +2259,8 @@ public class MachineLearningRestController extends BaseRestController {
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 7) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.SUNDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2252,15 +2269,13 @@ public class MachineLearningRestController extends BaseRestController {
 	public static int getMonthOfYear(Date date) {
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTime(date);
-		// Calendar months are zero-based, so adding 1 to get the correct month.
-		return calendar.get(Calendar.MONTH) + 1;
+		return calendar.get(Calendar.MONTH);
 	}
 
 	public static int getDayOfWeek(Date date) {
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTime(date);
-		// Calendar weeks are zero-based, so adding 1 to get the correct week.
-		return calendar.get(Calendar.DAY_OF_WEEK) + 1;
+		return calendar.get(Calendar.DAY_OF_WEEK);
 	}
 
 	private Double getBMI(Double height, Double weight) {
