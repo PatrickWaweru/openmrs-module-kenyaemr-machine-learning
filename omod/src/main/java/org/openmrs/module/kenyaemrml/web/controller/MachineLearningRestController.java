@@ -953,11 +953,11 @@ public class MachineLearningRestController extends BaseRestController {
 					System.err.println("IIT ML: (most_recent_vlsuppressed): " + getMostRecentVLsuppressed(lab));
 
 					// (most_recent_vlunsuppressed)
-					System.err.println("IIT ML: (n_tests_threeyears): " + getMostRecentVLunsuppressed(lab));
+					System.err.println("IIT ML: (most_recent_vlunsuppressed): " + getMostRecentVLunsuppressed(lab));
 
 					// (n_tests_threeyears)
-					Integer n_test_threeyears = getNtestsThreeYears(lab);
-					System.err.println("IIT ML: (n_tests_threeyears): " + n_test_threeyears);
+					Integer n_tests_threeyears = getNtestsThreeYears(lab);
+					System.err.println("IIT ML: (n_tests_threeyears): " + n_tests_threeyears);
 
 					// (n_hvl_threeyears)
 					Integer n_hvl_threeyears = getNHVLThreeYears(lab);
@@ -967,7 +967,7 @@ public class MachineLearningRestController extends BaseRestController {
 					System.err.println("IIT ML: (n_lvl_threeyears): " + getNLVLThreeYears(lab));
 
 					// (recent_hvl_rate)
-					System.err.println("IIT ML: (recent_hvl_rate): " + getRecentHvlRate(n_hvl_threeyears, n_test_threeyears));
+					System.err.println("IIT ML: (recent_hvl_rate): " + getRecentHvlRate(n_hvl_threeyears, n_tests_threeyears));
 
 					// (timeOnArt)
 					System.err.println("IIT ML: (timeOnArt): " + getTimeOnArt(art));
@@ -1262,8 +1262,8 @@ public class MachineLearningRestController extends BaseRestController {
 						Date testDate = (Date) labObject.get(1);
 						//Instant testInstant = testDate.toInstant();
 						LocalDate testLocal = dateToLocalDate(testDate);
-						long years = Math.abs(ChronoUnit.YEARS.between(nowLocal, testLocal));
-						if(years <= 3) {
+						long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
+						if(months <= 36) {
 							ret++;
 						}
 					}
@@ -1291,9 +1291,9 @@ public class MachineLearningRestController extends BaseRestController {
 						Date testDate = (Date) labObject.get(1);
 						// Instant testInstant = testDate.toInstant();
 						LocalDate testLocal = dateToLocalDate(testDate);
-						long years = Math.abs(ChronoUnit.YEARS.between(nowLocal, testLocal));
+						long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
 						String result = (String) labObject.get(2);
-						if(years <= 3 && getIntegerValue(result.trim()) >= 200) {
+						if(months <= 36 && getIntegerValue(result.trim()) >= 200) {
 							ret++;
 						}
 					}
@@ -1321,9 +1321,9 @@ public class MachineLearningRestController extends BaseRestController {
 						Date testDate = (Date) labObject.get(1);
 						//Instant testInstant = testDate.toInstant();
 						LocalDate testLocal = dateToLocalDate(testDate);
-						long years = Math.abs(ChronoUnit.YEARS.between(nowLocal, testLocal));
+						long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
 						String result = (String) labObject.get(2);
-						if(years <= 3 && (getIntegerValue(result.trim()) < 200 || result.trim().equalsIgnoreCase("LDL"))) {
+						if(months <= 36 && (getIntegerValue(result.trim()) < 200 || result.trim().equalsIgnoreCase("LDL"))) {
 							ret++;
 						}
 					}
@@ -1514,6 +1514,7 @@ public class MachineLearningRestController extends BaseRestController {
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
 							System.out.println("IIT ML: Position of 'ART': " + i);
+							artPos = i;
 							break;
 						}
 					}
@@ -1522,7 +1523,9 @@ public class MachineLearningRestController extends BaseRestController {
 						// We found ART adherence is covered we get the status
 						if (visitObject.get(9) != null) {
 							String adherenceString = (String) visitObject.get(9);
+							System.err.println("IIT ML: Adherence full string: " + adherenceString);
 							String[] adherenceTokens = adherenceString.split("\\|");
+							System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
 							if(adherenceTokens.length > 0) {
 								for (int i = 0; i < adherenceTokens.length; i++) {
 									if(i == artPos) {
@@ -1556,6 +1559,7 @@ public class MachineLearningRestController extends BaseRestController {
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
 							System.out.println("IIT ML: Position of 'ART': " + i);
+							artPos = i;
 							break;
 						}
 					}
@@ -1564,7 +1568,9 @@ public class MachineLearningRestController extends BaseRestController {
 						// We found ART adherence is covered we get the status
 						if (visitObject.get(9) != null) {
 							String adherenceString = (String) visitObject.get(9);
+							System.err.println("IIT ML: Adherence full string: " + adherenceString);
 							String[] adherenceTokens = adherenceString.split("\\|");
+							System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
 							if(adherenceTokens.length > 0) {
 								for (int i = 0; i < adherenceTokens.length; i++) {
 									if(i == artPos) {
@@ -1598,6 +1604,7 @@ public class MachineLearningRestController extends BaseRestController {
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
 							System.out.println("IIT ML: Position of 'ART': " + i);
+							artPos = i;
 							break;
 						}
 					}
@@ -1606,7 +1613,9 @@ public class MachineLearningRestController extends BaseRestController {
 						// We found ART adherence is covered we get the status
 						if (visitObject.get(9) != null) {
 							String adherenceString = (String) visitObject.get(9);
+							System.err.println("IIT ML: Adherence full string: " + adherenceString);
 							String[] adherenceTokens = adherenceString.split("\\|");
+							System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
 							if(adherenceTokens.length > 0) {
 								for (int i = 0; i < adherenceTokens.length; i++) {
 									if(i == artPos) {
