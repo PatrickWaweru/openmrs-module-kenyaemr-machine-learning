@@ -3,7 +3,7 @@
 <databaseChangeLog 
     xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-2.0.xsd">
  
     <!--
     	See http://wiki.openmrs.org/display/docs/Module+liquibase+File for 
@@ -651,7 +651,7 @@
     </changeSet>
 
     <!-- Add last_dwapi_etl_update field to the ML table -->
-    <changeSet author="pwaweru" id="kenyaemr-ML-description-field-20220726-123630">
+    <changeSet author="pwaweru" id="kenyaemr-ML-last_dwapi_etl_update-field-20231219-123630">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="kenyaemr_ml_patient_risk_score"/>
             <not>

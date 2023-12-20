@@ -58,6 +58,12 @@
 	</properties>
 	<dependencyManagement>
 		<dependencies>
+			<!-- https://mvnrepository.com/artifact/org.liquibase/liquibase-core -->
+			<!-- <dependency>
+				<groupId>org.liquibase</groupId>
+				<artifactId>liquibase-core</artifactId>
+				<version>4.25.0</version>
+			</dependency> -->
 
 			<!-- Begin OpenMRS modules -->
 			<dependency>

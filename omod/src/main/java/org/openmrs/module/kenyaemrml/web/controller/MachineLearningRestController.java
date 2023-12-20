@@ -448,7 +448,8 @@ public class MachineLearningRestController extends BaseRestController {
 	@ResponseBody
 	public Object variableTest(HttpServletRequest request) {
 		try {
-			List<Integer> patients = Arrays.asList(6559, 9261, 9800, 9895, 10705, 15219, 15361, 15723, 16712, 16856, 34089);
+			// List<Integer> patients = Arrays.asList(6559, 9261, 9800, 9895, 10705, 15219, 15361, 15723, 16712, 16856, 34089); // Bomu DB
+			List<Integer> patients = Arrays.asList(3980, 3979, 3978, 3977, 3976, 3975, 3974, 3973, 3972, 3971, 3970, 3969, 3968, 3967, 3966, 3965, 3964, 3963, 3962, 3961); // Mukuyuni DB
 			for(Integer patientID : patients) {
 				try {
 					// REF: https://github.com/palladiumkenya/DWAPI-Queries/blob/dwapi-etl/DWAPI_New_Extracts/Patient.sql
@@ -483,6 +484,8 @@ public class MachineLearningRestController extends BaseRestController {
 
 					String artQuery = "CALL sp_iitml_get_patient_ART(" + patientID + ")";
 
+					String lastETLUpdateQuery = "CALL sp_iitml_get_last_dwapi_etl_update()";
+
 					List<List<Object>> visits = administrationService
 							.executeSQL(visitsQuery, true); // PatientPK(0), VisitDate(1), NextAppointmentDate(2), VisitType(3), Height(4), Weight(5),
 							// Pregnant(6), DiffentiatedCare(7), StabilityAssessment(8), Adherence(9), WhoStage(10), BreastFeeding(11)
@@ -498,15 +501,24 @@ public class MachineLearningRestController extends BaseRestController {
 					List<List<Object>> art = administrationService
 							.executeSQL(artQuery,
 									true); // PatientPK(0), StartARTDate
+					List<List<Object>> lastETLUpdate = administrationService
+							.executeSQL(lastETLUpdateQuery,
+									true); // INDICATOR_NAME(0), INDICATOR_VALUE(1), INDICATOR_MONTH(2)
 
 					System.err.println("IIT ML: Got visits: " + visits.size());
 					System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
 					System.err.println("IIT ML: Got demographics: " + demographics.size());
 					System.err.println("IIT ML: Got lab: " + lab.size());
 					System.err.println("IIT ML: Got ART: " + art.size());
+					System.err.println("IIT ML: DWAPI ETL last update: " + lastETLUpdate.size());
+
 					// January 2019 reference date
 					Date jan2019 = new Date(119, 0, 1);
 					Date now = new Date();
+
+					// Last ETL Update
+					String lastETLUpdateSt = getLastETLUpdate(lastETLUpdate);
+					System.err.println("IIT ML: Last time the ETL was updated (lastETLUpdateSt): " + lastETLUpdateSt);
 
 					// Now that we have visits and pharmacy we can filter the data and apply logic
 
@@ -1007,6 +1019,31 @@ public class MachineLearningRestController extends BaseRestController {
 			e.printStackTrace();
 			return new ResponseEntity<Object>("Could not process the IIT Test", new HttpHeaders(), HttpStatus.UNPROCESSABLE_ENTITY);
 		}
+	}
+
+	/**
+	 * Returns the last time the DWAPI ETL was updated
+	 * @return String -- Date or Error
+	 */
+	private String getLastETLUpdate(List<List<Object>> updateData){
+		String ret = "Never Updated";
+		try {
+			if (updateData != null) {
+				// Get the last record
+				if (updateData.size() > 0) {
+					List<Object> updateObject = updateData.get(updateData.size() - 1);
+					if (updateObject.get(1) != null) {
+						Date updateDate = (Date) updateObject.get(1);
+						SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+						ret = sdf.format(updateDate);
+					}
+				}
+			}
+		} catch(Exception ex) {
+			System.err.println("IIT ML: Error getting the last time the DWAPI ETL was updated");
+			ex.printStackTrace();
+		}
+		return(ret);
 	}
 
 	private Double getUnscheduledRate(List<List<Object>> visits) {

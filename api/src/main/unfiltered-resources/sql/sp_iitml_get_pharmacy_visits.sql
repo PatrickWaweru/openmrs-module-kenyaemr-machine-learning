@@ -35,7 +35,6 @@ from (SELECT *
                         WHEN is_ctx = 1 THEN 'CTX'
                         WHEN is_dapsone = 1 THEN 'DAPSONE' END                       AS ProphylaxisType,
                     ''                                                               as previousRegimen,
-                    ''                                                               as RegimenChangedSwitched,
                     ''                                                               as RegimenChangeSwitchReason,
                     ''                                                               as StopRegimenReason,
                     ''                                                               as StopRegimenDate,
@@ -68,9 +67,6 @@ from (SELECT *
                     e.regimen                                                                           as regimen,
                     ''                                                                                  as ProphylaxisType,
                     @prev_regimen                                                                          previousRegimen,
-                    coalesce(@s := (if(ifnull(@prev_regimen_line, '') <> regimen_line and discontinued = 1, 'Switch',
-                                       NULL)),
-                             (if(@prev_regimen <> regimen and discontinued = 1, 'Substitution', NULL))) as RegimenChangedSwitched,
                     (case reason_discontinued
                          when 160559 then 'Risk of pregnancy'
                          when 160561 then 'New drug available'
@@ -139,7 +135,6 @@ from (SELECT *
                     drug_name                                                                   as regimen,
                     ''                                                                          AS ProphylaxisType,
                     ''                                                                          as previousRegimen,
-                    ''                                                                          as RegimenChangedSwitched,
                     ''                                                                          as RegimenChangeSwitchReason,
                     ''                                                                          as StopRegimenReason,
                     ''                                                                          as StopRegimenDate,

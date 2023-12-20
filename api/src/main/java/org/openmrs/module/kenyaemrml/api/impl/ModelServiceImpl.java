@@ -279,6 +279,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			System.err.println("IIT ML: Got lab: " + lab.size());
 			System.err.println("IIT ML: Got ART: " + art.size());
 			System.err.println("IIT ML: DWAPI ETL last update: " + lastETLUpdate.size());
+
 			// January 2019 reference date
 			Date jan2019 = new Date(119, 0, 1);
 			Date now = new Date();
