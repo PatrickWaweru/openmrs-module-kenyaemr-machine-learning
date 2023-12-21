@@ -501,7 +501,7 @@ public class MachineLearningRestController extends BaseRestController {
 									true); // PatientPK(0), Gender, PatientSource, MaritalStatus, Age, PopulationType
 					List<List<Object>> lab = administrationService
 							.executeSQL(labQuery,
-									true); // PatientPK(0), ReportedByDate, TestResult
+									true); // PatientPK(0), ReportedByDate, TestResult, TestName
 					List<List<Object>> art = administrationService
 							.executeSQL(artQuery,
 									true); // PatientPK(0), StartARTDate
@@ -1170,46 +1170,70 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private Integer getOptimizedHIVRegimenNo(List<List<Object>> pharmacy) {
-		Integer ret = 1;
+	private String getOptimizedHIVRegimenNo(List<List<Object>> pharmacy) {
+		String ret = "NA";
+		// NB: limit to last 400 days
 		if(pharmacy != null) {
 			if (pharmacy.size() > 0) {
 				// The last record
-				List<Object> labObject = pharmacy.get(pharmacy.size() - 1);
-				// TreatmentType != NULL or Prophylaxis, Drug != NULL
-				if (labObject.get(4) != null && labObject.get(3) != null) {
-					String treatment = (String) labObject.get(4);
-					if(!treatment.trim().equalsIgnoreCase("Prophylaxis")) {
-						// Get drug name
-						String drugName = (String) labObject.get(3);
-						drugName = drugName.toLowerCase();
-						if (drugName.contains("dtg")) {
-							ret = 0;
+				List<Object> pharmacyObject = pharmacy.get(pharmacy.size() - 1);
+				Date now = new Date();
+				Date dispenseDate = (Date) pharmacyObject.get(1);
+				// Get the difference in days
+				long differenceInMilliseconds = now.getTime() - dispenseDate.getTime();
+				int differenceInDays = (int) (differenceInMilliseconds / (24 * 60 * 60 * 1000));
+				if (differenceInDays < 400) {
+					// TreatmentType != NULL or Prophylaxis, Drug != NULL
+					if (pharmacyObject.get(4) != null && pharmacyObject.get(3) != null) {
+						String treatment = (String) pharmacyObject.get(4);
+						if (!treatment.trim().equalsIgnoreCase("Prophylaxis")) {
+							// Get drug name
+							String drugName = (String) pharmacyObject.get(3);
+							drugName = drugName.toLowerCase();
+							if (drugName.contains("dtg")) {
+								ret = "0";
+							} else {
+								ret = "1";
+							}
 						}
 					}
+				} else {
+					ret = "NA";
 				}
 			}
 		}
 		return(ret);
 	}
 
-	private Integer getOptimizedHIVRegimenYes(List<List<Object>> pharmacy) {
-		Integer ret = 0;
+	private String getOptimizedHIVRegimenYes(List<List<Object>> pharmacy) {
+		String ret = "NA";
+		// NB: limit to last 400 days
 		if(pharmacy != null) {
 			if (pharmacy.size() > 0) {
 				// The last record
-				List<Object> labObject = pharmacy.get(pharmacy.size() - 1);
-				// TreatmentType != NULL or Prophylaxis, Drug != NULL
-				if (labObject.get(4) != null && labObject.get(3) != null) {
-					String treatment = (String) labObject.get(4);
-					if(!treatment.trim().equalsIgnoreCase("Prophylaxis")) {
-						// Get drug name
-						String drugName = (String) labObject.get(3);
-						drugName = drugName.toLowerCase();
-						if (drugName.contains("dtg")) {
-							ret = 1;
+				List<Object> pharmacyObject = pharmacy.get(pharmacy.size() - 1);
+				Date now = new Date();
+				Date dispenseDate = (Date) pharmacyObject.get(1);
+				// Get the difference in days
+				long differenceInMilliseconds = now.getTime() - dispenseDate.getTime();
+				int differenceInDays = (int) (differenceInMilliseconds / (24 * 60 * 60 * 1000));
+				if (differenceInDays < 400) {
+					// TreatmentType != NULL or Prophylaxis, Drug != NULL
+					if (pharmacyObject.get(4) != null && pharmacyObject.get(3) != null) {
+						String treatment = (String) pharmacyObject.get(4);
+						if(!treatment.trim().equalsIgnoreCase("Prophylaxis")) {
+							// Get drug name
+							String drugName = (String) pharmacyObject.get(3);
+							drugName = drugName.toLowerCase();
+							if (drugName.contains("dtg")) {
+								ret = "1";
+							} else {
+								ret = "0";
+							}
 						}
 					}
+				} else {
+					ret = "NA";
 				}
 			}
 		}
@@ -1256,28 +1280,24 @@ public class MachineLearningRestController extends BaseRestController {
 			// Get for the last 3 years
 			if (lab.size() > 0) {
 				// Reverse the list to loop from the first
-				List<List<Object>> labRev = new ArrayList<>();
-				labRev.addAll(lab);
+				List<List<Object>> labRev = new ArrayList<>(lab);
 				Collections.reverse(labRev);
 				// Count number of tests for the last 3 years
 				Date now = new Date();
-				// Instant nowInstant = now.toInstant();
 				LocalDate nowLocal = dateToLocalDate(now);
-				Set<Date> encounteredDates = new HashSet<>();
 				for(List<Object> labObject: labRev) {
-					if (labObject.get(1) != null) {
+					if (labObject.get(1) != null && labObject.get(3) != null) {
 						Date testDate = (Date) labObject.get(1);
-						if(!encounteredDates.contains(testDate)) {
+						String testName = (String) labObject.get(3);
+						if(!testName.trim().equalsIgnoreCase("cd4 count")) {
 							LocalDate testLocal = dateToLocalDate(testDate);
 							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
 							if (months <= 36) {
 								ret++;
 							}
 						}
-						encounteredDates.add(testDate);
 					}
 				}
-				System.err.println("IIT ML: Total Tests in the last 3 yrs: " + encounteredDates);
 			}
 		}
 		return(ret);
@@ -1289,18 +1309,16 @@ public class MachineLearningRestController extends BaseRestController {
 			// Get for the last 3 years
 			if (lab.size() > 0) {
 				// Reverse the list to loop from the first
-				List<List<Object>> labRev = new ArrayList<>();
-				labRev.addAll(lab);
+				List<List<Object>> labRev = new ArrayList<>(lab);
 				Collections.reverse(labRev);
 				// Count number of tests for the last 3 years
 				Date now = new Date();
-				// Instant nowInstant = now.toInstant();
 				LocalDate nowLocal = dateToLocalDate(now);
-				Set<Date> encounteredDates = new HashSet<>();
 				for(List<Object> labObject: labRev) {
-					if (labObject.get(1) != null && labObject.get(2) != null) {
+					if (labObject.get(1) != null && labObject.get(2) != null && labObject.get(3) != null) {
 						Date testDate = (Date) labObject.get(1);
-						if(!encounteredDates.contains(testDate)) {
+						String testName = (String) labObject.get(3);
+						if(!testName.trim().equalsIgnoreCase("cd4 count")) {
 							LocalDate testLocal = dateToLocalDate(testDate);
 							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
 							String result = (String) labObject.get(2);
@@ -1308,7 +1326,6 @@ public class MachineLearningRestController extends BaseRestController {
 								ret++;
 							}
 						}
-						encounteredDates.add(testDate);
 					}
 				}
 			}
@@ -1322,18 +1339,16 @@ public class MachineLearningRestController extends BaseRestController {
 			// Get for the last 3 years
 			if (lab.size() > 0) {
 				// Reverse the list to loop from the first
-				List<List<Object>> labRev = new ArrayList<>();
-				labRev.addAll(lab);
+				List<List<Object>> labRev = new ArrayList<>(lab);
 				Collections.reverse(labRev);
 				// Count number of tests for the last 3 years
 				Date now = new Date();
-				// Instant nowInstant = now.toInstant();
 				LocalDate nowLocal = dateToLocalDate(now);
-				Set<Date> encounteredDates = new HashSet<>();
 				for(List<Object> labObject: labRev) {
-					if (labObject.get(1) != null && labObject.get(2) != null) {
+					if (labObject.get(1) != null && labObject.get(2) != null && labObject.get(3) != null) {
 						Date testDate = (Date) labObject.get(1);
-						if(!encounteredDates.contains(testDate)) {
+						String testName = (String) labObject.get(3);
+						if(!testName.trim().equalsIgnoreCase("cd4 count")) {
 							LocalDate testLocal = dateToLocalDate(testDate);
 							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
 							String result = (String) labObject.get(2);
@@ -1342,7 +1357,6 @@ public class MachineLearningRestController extends BaseRestController {
 								ret++;
 							}
 						}
-						encounteredDates.add(testDate);
 					}
 				}
 			}

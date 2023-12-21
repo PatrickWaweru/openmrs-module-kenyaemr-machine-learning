@@ -76,7 +76,24 @@ select
                                                                        then "Mycobacterium tuberculosis detected with indeterminate rifampin resistance"
                                                                    when 163611 then "Invalid"
                                                                    when 1138 then "INDETERMINATE" end),
-                                           test_result))))))))))))                      as TestResult
+                                           test_result))))))))))))                      as TestResult,
+        (case lab_test
+            when 5497 then "CD4 Count"
+            when 730 then "CD4 Percent"
+            when 654 then "ALT"
+            when 790 then "Serum creatinine (umol/L)"
+            when 167452 then "Serum Cryptococcal Ag"
+            when 167459 then "TB LAM"
+            when 856 then "HIV Viral Load"
+            when 1305 then "HIV Viral Load"
+            when 21 then "Hemoglobin (HGB)"
+            when 1029 then "VDRL Titre"
+            when 1031 then "Treponema Pallidum Hemagglutination Assay"
+            when 1619 then "Rapid Plasma Reagin"
+            when 1032 then "Treponema Pallidum Hemagglutination Assay, Qualitative"
+            when 307 then "Sputum for Acid Fast Bacilli"
+            when 162202 then "GeneXpert"
+            else "" end)                                                                as TestName
 from dwapi_etl.etl_laboratory_extract l
          left join openmrs.kenyaemr_order_entry_lab_manifest_order o on l.order_id = o.order_id
          join dwapi_etl.etl_patient_demographics d on d.patient_id = l.patient_id
