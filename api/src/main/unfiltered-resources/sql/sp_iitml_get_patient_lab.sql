@@ -93,7 +93,8 @@ select
             when 1032 then "Treponema Pallidum Hemagglutination Assay, Qualitative"
             when 307 then "Sputum for Acid Fast Bacilli"
             when 162202 then "GeneXpert"
-            else "" end)                                                                as TestName
+            else "" end)                                                                as TestName,
+    coalesce(DATE(l.date_test_requested), DATE(l.visit_date))                           as OrderedByDate
 from dwapi_etl.etl_laboratory_extract l
          left join openmrs.kenyaemr_order_entry_lab_manifest_order o on l.order_id = o.order_id
          join dwapi_etl.etl_patient_demographics d on d.patient_id = l.patient_id
