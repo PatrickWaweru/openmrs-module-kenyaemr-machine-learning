@@ -1178,11 +1178,14 @@ public class MachineLearningRestController extends BaseRestController {
 				List<Object> labObject = pharmacy.get(pharmacy.size() - 1);
 				// TreatmentType != NULL or Prophylaxis, Drug != NULL
 				if (labObject.get(4) != null && labObject.get(3) != null) {
-					// Get drug name
-					String drugName = (String) labObject.get(3);
-					drugName = drugName.toLowerCase();
-					if(drugName.contains("dtg")) {
-						ret = 0;
+					String treatment = (String) labObject.get(4);
+					if(!treatment.trim().equalsIgnoreCase("Prophylaxis")) {
+						// Get drug name
+						String drugName = (String) labObject.get(3);
+						drugName = drugName.toLowerCase();
+						if (drugName.contains("dtg")) {
+							ret = 0;
+						}
 					}
 				}
 			}
@@ -1198,11 +1201,14 @@ public class MachineLearningRestController extends BaseRestController {
 				List<Object> labObject = pharmacy.get(pharmacy.size() - 1);
 				// TreatmentType != NULL or Prophylaxis, Drug != NULL
 				if (labObject.get(4) != null && labObject.get(3) != null) {
-					// Get drug name
-					String drugName = (String) labObject.get(3);
-					drugName = drugName.toLowerCase();
-					if(drugName.contains("dtg")) {
-						ret = 1;
+					String treatment = (String) labObject.get(4);
+					if(!treatment.trim().equalsIgnoreCase("Prophylaxis")) {
+						// Get drug name
+						String drugName = (String) labObject.get(3);
+						drugName = drugName.toLowerCase();
+						if (drugName.contains("dtg")) {
+							ret = 1;
+						}
 					}
 				}
 			}
@@ -1257,17 +1263,21 @@ public class MachineLearningRestController extends BaseRestController {
 				Date now = new Date();
 				// Instant nowInstant = now.toInstant();
 				LocalDate nowLocal = dateToLocalDate(now);
+				Set<Date> encounteredDates = new HashSet<>();
 				for(List<Object> labObject: labRev) {
 					if (labObject.get(1) != null) {
 						Date testDate = (Date) labObject.get(1);
-						//Instant testInstant = testDate.toInstant();
-						LocalDate testLocal = dateToLocalDate(testDate);
-						long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
-						if(months <= 36) {
-							ret++;
+						if(!encounteredDates.contains(testDate)) {
+							LocalDate testLocal = dateToLocalDate(testDate);
+							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
+							if (months <= 36) {
+								ret++;
+							}
 						}
+						encounteredDates.add(testDate);
 					}
 				}
+				System.err.println("IIT ML: Total Tests in the last 3 yrs: " + encounteredDates);
 			}
 		}
 		return(ret);
@@ -1286,16 +1296,19 @@ public class MachineLearningRestController extends BaseRestController {
 				Date now = new Date();
 				// Instant nowInstant = now.toInstant();
 				LocalDate nowLocal = dateToLocalDate(now);
+				Set<Date> encounteredDates = new HashSet<>();
 				for(List<Object> labObject: labRev) {
 					if (labObject.get(1) != null && labObject.get(2) != null) {
 						Date testDate = (Date) labObject.get(1);
-						// Instant testInstant = testDate.toInstant();
-						LocalDate testLocal = dateToLocalDate(testDate);
-						long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
-						String result = (String) labObject.get(2);
-						if(months <= 36 && getIntegerValue(result.trim()) >= 200) {
-							ret++;
+						if(!encounteredDates.contains(testDate)) {
+							LocalDate testLocal = dateToLocalDate(testDate);
+							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
+							String result = (String) labObject.get(2);
+							if (months <= 36 && getIntegerValue(result.trim()) >= 200) {
+								ret++;
+							}
 						}
+						encounteredDates.add(testDate);
 					}
 				}
 			}
@@ -1316,16 +1329,20 @@ public class MachineLearningRestController extends BaseRestController {
 				Date now = new Date();
 				// Instant nowInstant = now.toInstant();
 				LocalDate nowLocal = dateToLocalDate(now);
+				Set<Date> encounteredDates = new HashSet<>();
 				for(List<Object> labObject: labRev) {
 					if (labObject.get(1) != null && labObject.get(2) != null) {
 						Date testDate = (Date) labObject.get(1);
-						//Instant testInstant = testDate.toInstant();
-						LocalDate testLocal = dateToLocalDate(testDate);
-						long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
-						String result = (String) labObject.get(2);
-						if(months <= 36 && (getIntegerValue(result.trim()) < 200 || result.trim().equalsIgnoreCase("LDL"))) {
-							ret++;
+						if(!encounteredDates.contains(testDate)) {
+							LocalDate testLocal = dateToLocalDate(testDate);
+							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
+							String result = (String) labObject.get(2);
+							if (months <= 36 && (getIntegerValue(result.trim()) < 200 || result.trim()
+									.equalsIgnoreCase("LDL"))) {
+								ret++;
+							}
 						}
+						encounteredDates.add(testDate);
 					}
 				}
 			}
@@ -1932,6 +1949,7 @@ public class MachineLearningRestController extends BaseRestController {
 				List<Object> sourceObject = demographics.get(demographics.size() - 1);
 				if(sourceObject.get(3) != null) {
 					String source = (String) sourceObject.get(3);
+					System.err.println("IIT ML: Raw Patient source is: " + source);
 					if (source.trim().equalsIgnoreCase("vct")) {
 						ret = 1;
 					}
@@ -1949,9 +1967,12 @@ public class MachineLearningRestController extends BaseRestController {
 				List<Object> sourceObject = demographics.get(demographics.size() - 1);
 				if(sourceObject.get(3) != null) {
 					String source = (String) sourceObject.get(3);
+					System.err.println("IIT ML: Raw Patient source is: " + source);
 					if (!source.trim().equalsIgnoreCase("opd") && !source.trim().equalsIgnoreCase("vct")) {
 						ret = 1;
 					}
+				} else {
+					ret = 1;
 				}
 			}
 		}
@@ -1966,6 +1987,7 @@ public class MachineLearningRestController extends BaseRestController {
 				List<Object> sourceObject = demographics.get(demographics.size() - 1);
 				if(sourceObject.get(3) != null) {
 					String source = (String) sourceObject.get(3);
+					System.err.println("IIT ML: Raw Patient source is: " + source);
 					if (source.trim().equalsIgnoreCase("opd")) {
 						ret = 1;
 					}
@@ -2386,8 +2408,8 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private Integer getNumHivRegimens(Set<Treatment> treatments) {
-		Integer ret = 0;
+	private String getNumHivRegimens(Set<Treatment> treatments) {
+		String ret = "NA";
 		if(treatments != null) {
 			Set<String> drugs = new HashSet<>(); // This will ensure we get unique drugs
 			for (Treatment in : treatments) {
@@ -2397,7 +2419,7 @@ public class MachineLearningRestController extends BaseRestController {
 					drugs.add(drug);
 				}
 			}
-			ret = drugs.size();
+			ret = drugs.size() > 0 ? String.valueOf(drugs.size()) : "NA";
 		}
 		return(ret);
 	}
