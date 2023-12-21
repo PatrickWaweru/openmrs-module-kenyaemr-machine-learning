@@ -2419,7 +2419,7 @@ public class MachineLearningRestController extends BaseRestController {
 			} else {
 				workingList.addAll(holdingList);
 			}
-			Integer divider = workingList.size();
+			Integer divider = Math.max(workingList.size(), 1);
 			if(divider > 0) {
 				Integer totalDays = 0;
 				for (Appointment in : workingList) {
@@ -2454,7 +2454,6 @@ public class MachineLearningRestController extends BaseRestController {
 		Double ret = 0.00;
 		if(missed != null) {
 			Integer addition = 0;
-			Integer divider = 5;
 
 			// Get last 5 missed
 			List<Integer> workingList = new ArrayList<>();
@@ -2464,6 +2463,8 @@ public class MachineLearningRestController extends BaseRestController {
 			} else {
 				workingList.addAll(missed);
 			}
+
+			Integer divider = Math.max(workingList.size(), 1);
 
 			for (Integer in : workingList) {
 				if(in > 0) {
@@ -2498,7 +2499,6 @@ public class MachineLearningRestController extends BaseRestController {
 		Double ret = 0.00;
 		if(missed != null) {
 			Integer addition = 0;
-			Integer divider = 10;
 
 			// Get last 10 missed
 			List<Integer> workingList = new ArrayList<>();
@@ -2508,6 +2508,8 @@ public class MachineLearningRestController extends BaseRestController {
 			} else {
 				workingList.addAll(missed);
 			}
+
+			Integer divider = Math.max(workingList.size(), 1);
 
 			for (Integer in : workingList) {
 				if(in > 0) {
@@ -2523,7 +2525,6 @@ public class MachineLearningRestController extends BaseRestController {
 		Double ret = 0.00;
 		if(missed != null) {
 			Integer addition = 0;
-			Integer divider = 3;
 
 			// Get last 3 missed
 			List<Integer> workingList = new ArrayList<>();
@@ -2533,6 +2534,8 @@ public class MachineLearningRestController extends BaseRestController {
 			} else {
 				workingList.addAll(missed);
 			}
+
+			Integer divider = Math.max(workingList.size(), 1);
 
 			for (Integer in : workingList) {
 				if(in > 0) {

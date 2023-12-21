@@ -254,6 +254,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 
 			String lastETLUpdateQuery = "CALL sp_iitml_get_last_dwapi_etl_update()";
 
+			String cd4Query = "CALL sp_iitml_get_patient_CD4count(" + patientID + ")";
+
 			List<List<Object>> visits = administrationService
 					.executeSQL(visitsQuery, true); // PatientPK(0), VisitDate(1), NextAppointmentDate(2), VisitType(3), Height(4), Weight(5),
 			// Pregnant(6), DiffentiatedCare(7), StabilityAssessment(8), Adherence(9), WhoStage(10), BreastFeeding(11)
@@ -272,6 +274,9 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			List<List<Object>> lastETLUpdate = administrationService
 					.executeSQL(lastETLUpdateQuery,
 							true); // INDICATOR_NAME(0), INDICATOR_VALUE(1), INDICATOR_MONTH(2)
+			List<List<Object>> cd4Counter = administrationService
+					.executeSQL(cd4Query,
+							true); // PatientPK(0), lastcd4(1)
 
 			System.err.println("IIT ML: Got visits: " + visits.size());
 			System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
@@ -279,6 +284,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			System.err.println("IIT ML: Got lab: " + lab.size());
 			System.err.println("IIT ML: Got ART: " + art.size());
 			System.err.println("IIT ML: DWAPI ETL last update: " + lastETLUpdate.size());
+			System.err.println("IIT ML: Got Last CD4 count: " + cd4Counter.size());
 
 			// January 2019 reference date
 			Date jan2019 = new Date(119, 0, 1);
@@ -811,11 +817,11 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			System.err.println("IIT ML: (AHDYes): " + AHDYes);
 
 			// (OptimizedHIVRegimenNo)
-			Integer OptimizedHIVRegimenNo = getOptimizedHIVRegimenNo(pharmacy);
+			String OptimizedHIVRegimenNo = getOptimizedHIVRegimenNo(pharmacy);
 			System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + OptimizedHIVRegimenNo);
 
 			// (OptimizedHIVRegimenYes)
-			Integer OptimizedHIVRegimenYes = getOptimizedHIVRegimenYes(pharmacy);
+			String OptimizedHIVRegimenYes = getOptimizedHIVRegimenYes(pharmacy);
 			System.err.println("IIT ML: (OptimizedHIVRegimenYes): " + OptimizedHIVRegimenYes);
 
 			// NB: Any number equal or above 200 is considered High Viral Load (HVL). Any below is LDL or suppressed or Low Viral Load (LVL)
@@ -871,7 +877,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					"IIT ML: Total number of regimens - nonfiltered (last 400 days): " + pharmTreatment.size());
 
 			// (num_hiv_regimens) -- Note: If zero, we show NA
-			Integer num_hiv_regimens = getNumHivRegimens(pharmTreatment);
+			String num_hiv_regimens = getNumHivRegimens(pharmTreatment);
 			System.err.println("IIT ML: (num_hiv_regimens): " + num_hiv_regimens);
 
 			// End Local Pull And Display
@@ -1314,40 +1320,70 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		return(ret);
 	}
 
-	private Integer getOptimizedHIVRegimenNo(List<List<Object>> pharmacy) {
-		Integer ret = 1;
+	private String getOptimizedHIVRegimenNo(List<List<Object>> pharmacy) {
+		String ret = "NA";
+		// NB: limit to last 400 days
 		if(pharmacy != null) {
 			if (pharmacy.size() > 0) {
 				// The last record
-				List<Object> labObject = pharmacy.get(pharmacy.size() - 1);
-				// TreatmentType != NULL or Prophylaxis, Drug != NULL
-				if (labObject.get(4) != null && labObject.get(3) != null) {
-					// Get drug name
-					String drugName = (String) labObject.get(3);
-					drugName = drugName.toLowerCase();
-					if(drugName.contains("dtg")) {
-						ret = 0;
+				List<Object> pharmacyObject = pharmacy.get(pharmacy.size() - 1);
+				Date now = new Date();
+				Date dispenseDate = (Date) pharmacyObject.get(1);
+				// Get the difference in days
+				long differenceInMilliseconds = now.getTime() - dispenseDate.getTime();
+				int differenceInDays = (int) (differenceInMilliseconds / (24 * 60 * 60 * 1000));
+				if (differenceInDays < 400) {
+					// TreatmentType != NULL or Prophylaxis, Drug != NULL
+					if (pharmacyObject.get(4) != null && pharmacyObject.get(3) != null) {
+						String treatment = (String) pharmacyObject.get(4);
+						if (!treatment.trim().equalsIgnoreCase("Prophylaxis")) {
+							// Get drug name
+							String drugName = (String) pharmacyObject.get(3);
+							drugName = drugName.toLowerCase();
+							if (drugName.contains("dtg")) {
+								ret = "0";
+							} else {
+								ret = "1";
+							}
+						}
 					}
+				} else {
+					ret = "NA";
 				}
 			}
 		}
 		return(ret);
 	}
 
-	private Integer getOptimizedHIVRegimenYes(List<List<Object>> pharmacy) {
-		Integer ret = 0;
+	private String getOptimizedHIVRegimenYes(List<List<Object>> pharmacy) {
+		String ret = "NA";
+		// NB: limit to last 400 days
 		if(pharmacy != null) {
 			if (pharmacy.size() > 0) {
 				// The last record
-				List<Object> labObject = pharmacy.get(pharmacy.size() - 1);
-				// TreatmentType != NULL or Prophylaxis, Drug != NULL
-				if (labObject.get(4) != null && labObject.get(3) != null) {
-					// Get drug name
-					String drugName = (String) labObject.get(3);
-					drugName = drugName.toLowerCase();
-					if(drugName.contains("dtg")) {
-						ret = 1;
+				List<Object> pharmacyObject = pharmacy.get(pharmacy.size() - 1);
+				Date now = new Date();
+				Date dispenseDate = (Date) pharmacyObject.get(1);
+				// Get the difference in days
+				long differenceInMilliseconds = now.getTime() - dispenseDate.getTime();
+				int differenceInDays = (int) (differenceInMilliseconds / (24 * 60 * 60 * 1000));
+				if (differenceInDays < 400) {
+					// TreatmentType != NULL or Prophylaxis, Drug != NULL
+					if (pharmacyObject.get(4) != null && pharmacyObject.get(3) != null) {
+						String treatment = (String) pharmacyObject.get(4);
+						if(!treatment.trim().equalsIgnoreCase("Prophylaxis")) {
+							// Get drug name
+							String drugName = (String) pharmacyObject.get(3);
+							drugName = drugName.toLowerCase();
+							if (drugName.contains("dtg")) {
+								ret = "1";
+							} else {
+								ret = "0";
+							}
+						}
 					}
+				} else {
+					ret = "NA";
 				}
 			}
 		}
@@ -1394,22 +1430,26 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			// Get for the last 3 years
 			if (lab.size() > 0) {
 				// Reverse the list to loop from the first
-				List<List<Object>> labRev = new ArrayList<>();
-				labRev.addAll(lab);
+				List<List<Object>> labRev = new ArrayList<>(lab);
 				Collections.reverse(labRev);
 				// Count number of tests for the last 3 years
 				Date now = new Date();
-				// Instant nowInstant = now.toInstant();
-				java.time.LocalDate nowLocal = dateToLocalDate(now);
+				LocalDate nowLocal = dateToLocalDate(now);
+				// A unique test is given by unique order date
+				Set<Date> uniqueTests = new HashSet<>();
 				for(List<Object> labObject: labRev) {
-					if (labObject.get(1) != null) {
-						Date testDate = (Date) labObject.get(1);
-						//Instant testInstant = testDate.toInstant();
-						java.time.LocalDate testLocal = dateToLocalDate(testDate);
-						long years = Math.abs(ChronoUnit.YEARS.between(nowLocal, testLocal));
-						if(years <= 3) {
-							ret++;
+					if (labObject.get(1) != null && labObject.get(3) != null && labObject.get(4) != null) {
+						Date orderDate = (Date) labObject.get(4);
+						Date resultDate = (Date) labObject.get(1);
+						String testName = (String) labObject.get(3);
+						if(!uniqueTests.contains(orderDate) && testName.trim().equalsIgnoreCase("hiv viral load")) {
+							LocalDate resultLocal = dateToLocalDate(resultDate);
+							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, resultLocal));
+							if (months <= 36) {
+								ret++;
+							}
 						}
+						uniqueTests.add(orderDate);
 					}
 				}
 			}
@@ -1423,23 +1463,27 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			// Get for the last 3 years
 			if (lab.size() > 0) {
 				// Reverse the list to loop from the first
-				List<List<Object>> labRev = new ArrayList<>();
-				labRev.addAll(lab);
+				List<List<Object>> labRev = new ArrayList<>(lab);
 				Collections.reverse(labRev);
 				// Count number of tests for the last 3 years
 				Date now = new Date();
-				// Instant nowInstant = now.toInstant();
-				java.time.LocalDate nowLocal = dateToLocalDate(now);
+				LocalDate nowLocal = dateToLocalDate(now);
+				// A unique test is given by unique order date
+				Set<Date> uniqueTests = new HashSet<>();
 				for(List<Object> labObject: labRev) {
-					if (labObject.get(1) != null && labObject.get(2) != null) {
-						Date testDate = (Date) labObject.get(1);
-						// Instant testInstant = testDate.toInstant();
-						java.time.LocalDate testLocal = dateToLocalDate(testDate);
-						long years = Math.abs(ChronoUnit.YEARS.between(nowLocal, testLocal));
-						String result = (String) labObject.get(2);
-						if(years <= 3 && getIntegerValue(result.trim()) >= 200) {
-							ret++;
+					if (labObject.get(1) != null && labObject.get(2) != null && labObject.get(3) != null && labObject.get(4) != null) {
+						Date orderDate = (Date) labObject.get(4);
+						Date resultDate = (Date) labObject.get(1);
+						String testName = (String) labObject.get(3);
+						if(!uniqueTests.contains(orderDate) && testName.trim().equalsIgnoreCase("hiv viral load")) {
+							LocalDate resultLocal = dateToLocalDate(resultDate);
+							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, resultLocal));
+							String result = (String) labObject.get(2);
+							if (months <= 36 && getIntegerValue(result.trim()) >= 200) {
+								ret++;
+							}
 						}
+						uniqueTests.add(orderDate);
 					}
 				}
 			}
@@ -1453,23 +1497,28 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			// Get for the last 3 years
 			if (lab.size() > 0) {
 				// Reverse the list to loop from the first
-				List<List<Object>> labRev = new ArrayList<>();
-				labRev.addAll(lab);
+				List<List<Object>> labRev = new ArrayList<>(lab);
 				Collections.reverse(labRev);
 				// Count number of tests for the last 3 years
 				Date now = new Date();
-				// Instant nowInstant = now.toInstant();
-				java.time.LocalDate nowLocal = dateToLocalDate(now);
+				LocalDate nowLocal = dateToLocalDate(now);
+				// A unique test is given by unique order date
+				Set<Date> uniqueTests = new HashSet<>();
 				for(List<Object> labObject: labRev) {
-					if (labObject.get(1) != null && labObject.get(2) != null) {
-						Date testDate = (Date) labObject.get(1);
-						//Instant testInstant = testDate.toInstant();
-						java.time.LocalDate testLocal = dateToLocalDate(testDate);
-						long years = Math.abs(ChronoUnit.YEARS.between(nowLocal, testLocal));
-						String result = (String) labObject.get(2);
-						if(years <= 3 && (getIntegerValue(result.trim()) < 200 || result.trim().equalsIgnoreCase("LDL"))) {
-							ret++;
+					if (labObject.get(1) != null && labObject.get(2) != null && labObject.get(3) != null && labObject.get(4) != null) {
+						Date orderDate = (Date) labObject.get(4);
+						Date resultDate = (Date) labObject.get(1);
+						String testName = (String) labObject.get(3);
+						if(!uniqueTests.contains(orderDate) && testName.trim().equalsIgnoreCase("hiv viral load")) {
+							LocalDate resultLocal = dateToLocalDate(resultDate);
+							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, resultLocal));
+							String result = (String) labObject.get(2);
+							if (months <= 36 && (getIntegerValue(result.trim()) < 200 || result.trim()
+									.equalsIgnoreCase("LDL"))) {
+								ret++;
+							}
 						}
+						uniqueTests.add(orderDate);
 					}
 				}
 			}
@@ -1658,6 +1707,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
 							System.out.println("IIT ML: Position of 'ART': " + i);
+							artPos = i;
 							break;
 						}
 					}
@@ -1666,7 +1716,9 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						// We found ART adherence is covered we get the status
 						if (visitObject.get(9) != null) {
 							String adherenceString = (String) visitObject.get(9);
+							System.err.println("IIT ML: Adherence full string: " + adherenceString);
 							String[] adherenceTokens = adherenceString.split("\\|");
+							System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
 							if(adherenceTokens.length > 0) {
 								for (int i = 0; i < adherenceTokens.length; i++) {
 									if(i == artPos) {
@@ -1700,6 +1752,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
 							System.out.println("IIT ML: Position of 'ART': " + i);
+							artPos = i;
 							break;
 						}
 					}
@@ -1708,7 +1761,9 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						// We found ART adherence is covered we get the status
 						if (visitObject.get(9) != null) {
 							String adherenceString = (String) visitObject.get(9);
+							System.err.println("IIT ML: Adherence full string: " + adherenceString);
 							String[] adherenceTokens = adherenceString.split("\\|");
+							System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
 							if(adherenceTokens.length > 0) {
 								for (int i = 0; i < adherenceTokens.length; i++) {
 									if(i == artPos) {
@@ -1742,6 +1797,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
 							System.out.println("IIT ML: Position of 'ART': " + i);
+							artPos = i;
 							break;
 						}
 					}
@@ -1750,7 +1806,9 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						// We found ART adherence is covered we get the status
 						if (visitObject.get(9) != null) {
 							String adherenceString = (String) visitObject.get(9);
+							System.err.println("IIT ML: Adherence full string: " + adherenceString);
 							String[] adherenceTokens = adherenceString.split("\\|");
+							System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
 							if(adherenceTokens.length > 0) {
 								for (int i = 0; i < adherenceTokens.length; i++) {
 									if(i == artPos) {
@@ -2067,6 +2125,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				List<Object> sourceObject = demographics.get(demographics.size() - 1);
 				if(sourceObject.get(3) != null) {
 					String source = (String) sourceObject.get(3);
+					System.err.println("IIT ML: Raw Patient source is: " + source);
 					if (source.trim().equalsIgnoreCase("vct")) {
 						ret = 1;
 					}
@@ -2084,9 +2143,12 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				List<Object> sourceObject = demographics.get(demographics.size() - 1);
 				if(sourceObject.get(3) != null) {
 					String source = (String) sourceObject.get(3);
+					System.err.println("IIT ML: Raw Patient source is: " + source);
 					if (!source.trim().equalsIgnoreCase("opd") && !source.trim().equalsIgnoreCase("vct")) {
 						ret = 1;
 					}
+				} else {
+					ret = 1;
 				}
 			}
 		}
@@ -2101,6 +2163,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				List<Object> sourceObject = demographics.get(demographics.size() - 1);
 				if(sourceObject.get(3) != null) {
 					String source = (String) sourceObject.get(3);
+					System.err.println("IIT ML: Raw Patient source is: " + source);
 					if (source.trim().equalsIgnoreCase("opd")) {
 						ret = 1;
 					}
@@ -2152,7 +2215,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.JANUARY.getValue()) ? 1 : 0;
+				ret = (monthOfYear == Calendar.JANUARY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2166,7 +2229,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.FEBRUARY.getValue()) ? 1 : 0;
+				ret = (monthOfYear == Calendar.FEBRUARY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2180,7 +2243,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.MARCH.getValue()) ? 1 : 0;
+				ret = (monthOfYear == Calendar.MARCH) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2194,7 +2257,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = monthOfYear == Month.APRIL.getValue() ? 1: 0;
+				ret = monthOfYear == Calendar.APRIL ? 1: 0;
 			}
 		}
 		return(ret);
@@ -2208,7 +2271,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.MAY.getValue()) ? 1 : 0;
+				ret = (monthOfYear == Calendar.MAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2222,7 +2285,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.JUNE.getValue()) ? 1 : 0;
+				ret = (monthOfYear == Calendar.JUNE) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2236,7 +2299,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.JULY.getValue()) ? 1 : 0;
+				ret = (monthOfYear == Calendar.JULY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2250,7 +2313,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.AUGUST.getValue()) ? 1 : 0;
+				ret = (monthOfYear == Calendar.AUGUST) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2264,7 +2327,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.SEPTEMBER.getValue()) ? 1 : 0;
+				ret = (monthOfYear == Calendar.SEPTEMBER) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2278,7 +2341,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = monthOfYear == Month.OCTOBER.getValue() ? 1: 0;
+				ret = monthOfYear == Calendar.OCTOBER ? 1: 0;
 			}
 		}
 		return(ret);
@@ -2292,7 +2355,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.NOVEMBER.getValue()) ? 1 : 0;
+				ret = (monthOfYear == Calendar.NOVEMBER) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2306,7 +2369,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
 				int monthOfYear = getMonthOfYear(NAD);
-				ret = (monthOfYear == Month.DECEMBER.getValue()) ? 1 : 0;
+				ret = (monthOfYear == Calendar.DECEMBER) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2319,8 +2382,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 1) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.MONDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2333,8 +2396,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 2) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.TUESDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2347,8 +2410,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 3) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.WEDNESDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2361,8 +2424,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 4) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.THURSDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2375,8 +2438,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 5) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.FRIDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2389,8 +2452,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 6) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.SATURDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2403,8 +2466,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			if(appointments.size() > 0) {
 				Appointment latestAppointment = appointments.get(appointments.size() - 1);
 				Date NAD = latestAppointment.getAppointmentDate();
-				int monthOfYear = getDayOfWeek(NAD);
-				ret = (monthOfYear == 7) ? 1 : 0;
+				int dayOfWeek = getDayOfWeek(NAD);
+				ret = (dayOfWeek == Calendar.SUNDAY) ? 1 : 0;
 			}
 		}
 		return(ret);
@@ -2413,15 +2476,13 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	public static int getMonthOfYear(Date date) {
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTime(date);
-		// Calendar months are zero-based, so adding 1 to get the correct month.
-		return calendar.get(Calendar.MONTH) + 1;
+		return calendar.get(Calendar.MONTH);
 	}
 
 	public static int getDayOfWeek(Date date) {
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTime(date);
-		// Calendar weeks are zero-based, so adding 1 to get the correct week.
-		return calendar.get(Calendar.DAY_OF_WEEK) + 1;
+		return calendar.get(Calendar.DAY_OF_WEEK);
 	}
 
 	private Double getBMI(Double height, Double weight) {
@@ -2525,7 +2586,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			} else {
 				workingList.addAll(holdingList);
 			}
-			Integer divider = workingList.size();
+			Integer divider = Math.max(workingList.size(), 1);
 			if(divider > 0) {
 				Integer totalDays = 0;
 				for (Appointment in : workingList) {
@@ -2540,8 +2601,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		return(ret);
 	}
 
-	private Integer getNumHivRegimens(Set<Treatment> treatments) {
-		Integer ret = 0;
+	private String getNumHivRegimens(Set<Treatment> treatments) {
+		String ret = "NA";
 		if(treatments != null) {
 			Set<String> drugs = new HashSet<>(); // This will ensure we get unique drugs
 			for (Treatment in : treatments) {
@@ -2551,7 +2612,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					drugs.add(drug);
 				}
 			}
-			ret = drugs.size();
+			ret = drugs.size() > 0 ? String.valueOf(drugs.size()) : "NA";
 		}
 		return(ret);
 	}
@@ -2560,7 +2621,6 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		Double ret = 0.00;
 		if(missed != null) {
 			Integer addition = 0;
-			Integer divider = 5;
 
 			// Get last 5 missed
 			List<Integer> workingList = new ArrayList<>();
@@ -2570,6 +2630,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			} else {
 				workingList.addAll(missed);
 			}
+
+			Integer divider = Math.max(workingList.size(), 1);
 
 			for (Integer in : workingList) {
 				if(in > 0) {
@@ -2604,7 +2666,6 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		Double ret = 0.00;
 		if(missed != null) {
 			Integer addition = 0;
-			Integer divider = 10;
 
 			// Get last 10 missed
 			List<Integer> workingList = new ArrayList<>();
@@ -2614,6 +2675,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			} else {
 				workingList.addAll(missed);
 			}
+
+			Integer divider = Math.max(workingList.size(), 1);
 
 			for (Integer in : workingList) {
 				if(in > 0) {
@@ -2629,7 +2692,6 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		Double ret = 0.00;
 		if(missed != null) {
 			Integer addition = 0;
-			Integer divider = 3;
 
 			// Get last 3 missed
 			List<Integer> workingList = new ArrayList<>();
@@ -2639,6 +2701,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			} else {
 				workingList.addAll(missed);
 			}
+
+			Integer divider = Math.max(workingList.size(), 1);
 
 			for (Integer in : workingList) {
 				if(in > 0) {
