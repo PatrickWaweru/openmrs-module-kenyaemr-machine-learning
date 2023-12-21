@@ -1285,17 +1285,21 @@ public class MachineLearningRestController extends BaseRestController {
 				// Count number of tests for the last 3 years
 				Date now = new Date();
 				LocalDate nowLocal = dateToLocalDate(now);
+				// A unique test is given by unique order date
+				Set<Date> uniqueTests = new HashSet<>();
 				for(List<Object> labObject: labRev) {
-					if (labObject.get(1) != null && labObject.get(3) != null) {
-						Date testDate = (Date) labObject.get(1);
+					if (labObject.get(1) != null && labObject.get(3) != null && labObject.get(4) != null) {
+						Date orderDate = (Date) labObject.get(4);
+						Date resultDate = (Date) labObject.get(1);
 						String testName = (String) labObject.get(3);
-						if(!testName.trim().equalsIgnoreCase("cd4 count")) {
-							LocalDate testLocal = dateToLocalDate(testDate);
-							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
+						if(!uniqueTests.contains(orderDate) && testName.trim().equalsIgnoreCase("hiv viral load")) {
+							LocalDate resultLocal = dateToLocalDate(resultDate);
+							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, resultLocal));
 							if (months <= 36) {
 								ret++;
 							}
 						}
+						uniqueTests.add(orderDate);
 					}
 				}
 			}
@@ -1314,18 +1318,22 @@ public class MachineLearningRestController extends BaseRestController {
 				// Count number of tests for the last 3 years
 				Date now = new Date();
 				LocalDate nowLocal = dateToLocalDate(now);
+				// A unique test is given by unique order date
+				Set<Date> uniqueTests = new HashSet<>();
 				for(List<Object> labObject: labRev) {
-					if (labObject.get(1) != null && labObject.get(2) != null && labObject.get(3) != null) {
-						Date testDate = (Date) labObject.get(1);
+					if (labObject.get(1) != null && labObject.get(2) != null && labObject.get(3) != null && labObject.get(4) != null) {
+						Date orderDate = (Date) labObject.get(4);
+						Date resultDate = (Date) labObject.get(1);
 						String testName = (String) labObject.get(3);
-						if(!testName.trim().equalsIgnoreCase("cd4 count")) {
-							LocalDate testLocal = dateToLocalDate(testDate);
-							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
+						if(!uniqueTests.contains(orderDate) && testName.trim().equalsIgnoreCase("hiv viral load")) {
+							LocalDate resultLocal = dateToLocalDate(resultDate);
+							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, resultLocal));
 							String result = (String) labObject.get(2);
 							if (months <= 36 && getIntegerValue(result.trim()) >= 200) {
 								ret++;
 							}
 						}
+						uniqueTests.add(orderDate);
 					}
 				}
 			}
@@ -1344,19 +1352,23 @@ public class MachineLearningRestController extends BaseRestController {
 				// Count number of tests for the last 3 years
 				Date now = new Date();
 				LocalDate nowLocal = dateToLocalDate(now);
+				// A unique test is given by unique order date
+				Set<Date> uniqueTests = new HashSet<>();
 				for(List<Object> labObject: labRev) {
-					if (labObject.get(1) != null && labObject.get(2) != null && labObject.get(3) != null) {
-						Date testDate = (Date) labObject.get(1);
+					if (labObject.get(1) != null && labObject.get(2) != null && labObject.get(3) != null && labObject.get(4) != null) {
+						Date orderDate = (Date) labObject.get(4);
+						Date resultDate = (Date) labObject.get(1);
 						String testName = (String) labObject.get(3);
-						if(!testName.trim().equalsIgnoreCase("cd4 count")) {
-							LocalDate testLocal = dateToLocalDate(testDate);
-							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, testLocal));
+						if(!uniqueTests.contains(orderDate) && testName.trim().equalsIgnoreCase("hiv viral load")) {
+							LocalDate resultLocal = dateToLocalDate(resultDate);
+							long months = Math.abs(ChronoUnit.MONTHS.between(nowLocal, resultLocal));
 							String result = (String) labObject.get(2);
 							if (months <= 36 && (getIntegerValue(result.trim()) < 200 || result.trim()
 									.equalsIgnoreCase("LDL"))) {
 								ret++;
 							}
 						}
+						uniqueTests.add(orderDate);
 					}
 				}
 			}
