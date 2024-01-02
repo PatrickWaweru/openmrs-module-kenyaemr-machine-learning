@@ -293,7 +293,7 @@ public class MachineLearningRestController extends BaseRestController {
 
 		{
 			"modelConfigs": {
-				"modelId": "XGB_IIT_12152023",
+				"modelId": "XGB_IIT_01022024",
 				"encounterDate": "2023-12-17",
 				"facilityId": "14607",
 				"debug": "true"
