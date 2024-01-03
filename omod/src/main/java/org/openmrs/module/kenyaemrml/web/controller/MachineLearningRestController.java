@@ -1436,115 +1436,165 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private String getBreastFeedingNo(List<List<Object>> visits, Integer gender, Long Age) {
-		String ret = "NA";
-		if(visits != null) {
-			// Get the last visit
-			if (visits.size() > 0) {
-				List<Object> visitObject = visits.get(visits.size() - 1);
-				if (visitObject.get(11) != null) {
-					String isBreastFeeding = (String) visitObject.get(11);
-					// Gender 1: Male, Gender 2: Female
-					if(isBreastFeeding.trim().equalsIgnoreCase("yes") && gender == 1 && (Age <= 10 || Age >= 50)) {
-						ret = "0";
-						return(ret);
-					}
-					if(isBreastFeeding.trim().equalsIgnoreCase("no") && gender == 2 && Age > 9 && Age < 50) {
-						ret = "1";
-						return(ret);
-					}
-				}
+	/**
+	 * Checks if it is a female of child bearing age
+	 * @param gender -- Gender 1: Male, Gender 2: Female
+	 * @param Age -- The age of patient
+	 * @return true or false
+	 */
+	private boolean isFemaleOfChildBearingAge(Integer gender, Long Age) {
+		boolean ret = false;
+		if(gender != null && Age != null) {
+			if(gender == 2 && (Age > 9 && Age < 50)) {
+				ret = true;
 			}
 		}
 		return(ret);
 	}
 
-	private String getBreastFeedingNR(Integer gender, Long Age) {
+	private String getBreastFeedingNo(List<List<Object>> visits, Integer gender, Long Age) {
 		String ret = "NA";
-		// Gender 1: Male, Gender 2: Female
-		if(gender == 1 && (Age < 10 || Age > 50)) {
-			ret = "1";
-			return(ret);
-		}
-		if(gender == 2 && (Age >= 10 && Age <= 50)) {
+		if(isFemaleOfChildBearingAge(gender, Age)) {
+			if (visits != null) {
+				// Get the last visit
+				if (visits.size() > 0) {
+					List<Object> visitObject = visits.get(visits.size() - 1);
+					if (visitObject.get(11) != null) {
+						String isBreastFeeding = (String) visitObject.get(11);
+						// Gender 1: Male, Gender 2: Female
+						if (isBreastFeeding.trim().equalsIgnoreCase("yes")) {
+							ret = "0";
+							return (ret);
+						}
+						if (isBreastFeeding.trim().equalsIgnoreCase("no")) {
+							ret = "1";
+							return (ret);
+						}
+					} else {
+						ret = "NA";
+						return (ret);
+					}
+				}
+			}
+		} else {
 			ret = "0";
-			return(ret);
+			return (ret);
+		}
+		return(ret);
+	}
+
+	private String getBreastFeedingNR(Integer gender, Long Age) {
+		String ret = "0";
+		// Gender 1: Male, Gender 2: Female
+		if(isFemaleOfChildBearingAge(gender, Age)) {
+			ret = "0";
+		} else {
+			ret = "1";
 		}
 		return(ret);
 	}
 
 	private String getBreastFeedingYes(List<List<Object>> visits, Integer gender, Long Age) {
 		String ret = "NA";
-		if(visits != null) {
-			// Get the last visit
-			if (visits.size() > 0) {
-				List<Object> visitObject = visits.get(visits.size() - 1);
-				if (visitObject.get(11) != null) {
-					String isBreastFeeding = (String) visitObject.get(11);
-					// Gender 1: Male, Gender 2: Female
-					if(isBreastFeeding.trim().equalsIgnoreCase("no") && gender == 1 && (Age <= 10 || Age >= 50)) {
-						ret = "0";
-						return(ret);
-					}
-					if(isBreastFeeding.trim().equalsIgnoreCase("yes") && gender == 2 && Age > 9 && Age < 50) {
-						ret = "1";
-						return(ret);
+		if(isFemaleOfChildBearingAge(gender, Age)) {
+			if (visits != null) {
+				// Get the last visit
+				if (visits.size() > 0) {
+					List<Object> visitObject = visits.get(visits.size() - 1);
+					if (visitObject.get(11) != null) {
+						String isBreastFeeding = (String) visitObject.get(11);
+						// Gender 1: Male, Gender 2: Female
+						if (isBreastFeeding.trim().equalsIgnoreCase("no")) {
+							ret = "0";
+							return (ret);
+						}
+						if (isBreastFeeding.trim().equalsIgnoreCase("yes")) {
+							ret = "1";
+							return (ret);
+						}
+					} else {
+						ret = "NA";
+						return (ret);
 					}
 				}
 			}
+		} else {
+			ret = "0";
+			return (ret);
 		}
 		return(ret);
 	}
 
 	private String getPregnantNo(List<List<Object>> visits, Integer gender, Long Age) {
 		String ret = "NA";
-		if(visits != null) {
-			// Get the last visit
-			if (visits.size() > 0) {
-				List<Object> visitObject = visits.get(visits.size() - 1);
-				if (visitObject.get(6) != null) {
-					String isPregnant = (String) visitObject.get(6);
-					if(isPregnant.trim().equalsIgnoreCase("yes")) {
-						ret = "0";
-						return(ret);
-					}
-					if(isPregnant.trim().equalsIgnoreCase("no") && gender == 2 && Age > 9 && Age < 50) {
-						ret = "1";
-						return(ret);
+		if(isFemaleOfChildBearingAge(gender, Age)) {
+			if (visits != null) {
+				// Get the last visit
+				if (visits.size() > 0) {
+					List<Object> visitObject = visits.get(visits.size() - 1);
+					if (visitObject.get(6) != null) {
+						String isPregnant = (String) visitObject.get(6);
+						// Gender 1: Male, Gender 2: Female
+						if (isPregnant.trim().equalsIgnoreCase("yes")) {
+							ret = "0";
+							return (ret);
+						}
+						if (isPregnant.trim().equalsIgnoreCase("no")) {
+							ret = "1";
+							return (ret);
+						}
+					} else {
+						ret = "NA";
+						return (ret);
 					}
 				}
 			}
+		} else {
+			ret = "0";
+			return (ret);
 		}
+
 		return(ret);
 	}
 
 	private String getPregnantNR(Integer gender, Long Age) {
-		String ret = "0";
-		if(gender == 1 || Age < 10 || Age > 50) {
+		String ret = "NA";
+		// Gender 1: Male, Gender 2: Female
+		if(isFemaleOfChildBearingAge(gender, Age)) {
+			ret = "0";
+		} else  {
 			ret = "1";
-			return(ret);
 		}
 		return(ret);
 	}
 
 	private String getPregnantYes(List<List<Object>> visits, Integer gender, Long Age) {
 		String ret = "NA";
-		if(visits != null) {
-			// Get the last visit
-			if (visits.size() > 0) {
-				List<Object> visitObject = visits.get(visits.size() - 1);
-				if (visitObject.get(6) != null) {
-					String isPregnant = (String) visitObject.get(6);
-					if(isPregnant.trim().equalsIgnoreCase("no")) {
-						ret = "0";
-						return(ret);
-					}
-					if(isPregnant.trim().equalsIgnoreCase("yes") && gender == 2 && Age > 9 && Age < 50) {
-						ret = "1";
-						return(ret);
+		if(isFemaleOfChildBearingAge(gender, Age)) {
+			if (visits != null) {
+				// Get the last visit
+				if (visits.size() > 0) {
+					List<Object> visitObject = visits.get(visits.size() - 1);
+					if (visitObject.get(6) != null) {
+						String isPregnant = (String) visitObject.get(6);
+						// Gender 1: Male, Gender 2: Female
+						if (isPregnant.trim().equalsIgnoreCase("no")) {
+							ret = "0";
+							return (ret);
+						}
+						if (isPregnant.trim().equalsIgnoreCase("yes")) {
+							ret = "1";
+							return (ret);
+						}
+					} else {
+						ret = "NA";
+						return (ret);
 					}
 				}
 			}
+		} else {
+			ret = "0";
+			return (ret);
 		}
 		return(ret);
 	}
