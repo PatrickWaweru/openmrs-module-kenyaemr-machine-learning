@@ -1444,7 +1444,8 @@ public class MachineLearningRestController extends BaseRestController {
 				List<Object> visitObject = visits.get(visits.size() - 1);
 				if (visitObject.get(11) != null) {
 					String isBreastFeeding = (String) visitObject.get(11);
-					if(isBreastFeeding.trim().equalsIgnoreCase("yes")) {
+					// Gender 1: Male, Gender 2: Female
+					if(isBreastFeeding.trim().equalsIgnoreCase("yes") && gender == 1 && (Age <= 10 || Age >= 50)) {
 						ret = "0";
 						return(ret);
 					}
@@ -1459,9 +1460,14 @@ public class MachineLearningRestController extends BaseRestController {
 	}
 
 	private String getBreastFeedingNR(Integer gender, Long Age) {
-		String ret = "0";
-		if(gender == 1 || Age < 10 || Age > 50) {
+		String ret = "NA";
+		// Gender 1: Male, Gender 2: Female
+		if(gender == 1 && (Age < 10 || Age > 50)) {
 			ret = "1";
+			return(ret);
+		}
+		if(gender == 2 && (Age >= 10 && Age <= 50)) {
+			ret = "0";
 			return(ret);
 		}
 		return(ret);
@@ -1475,7 +1481,8 @@ public class MachineLearningRestController extends BaseRestController {
 				List<Object> visitObject = visits.get(visits.size() - 1);
 				if (visitObject.get(11) != null) {
 					String isBreastFeeding = (String) visitObject.get(11);
-					if(isBreastFeeding.trim().equalsIgnoreCase("no")) {
+					// Gender 1: Male, Gender 2: Female
+					if(isBreastFeeding.trim().equalsIgnoreCase("no") && gender == 1 && (Age <= 10 || Age >= 50)) {
 						ret = "0";
 						return(ret);
 					}
