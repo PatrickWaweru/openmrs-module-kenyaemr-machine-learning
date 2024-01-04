@@ -779,28 +779,28 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			System.err.println("IIT ML: (most_recent_art_adherencepoor): " + most_recent_art_adherencepoor);
 
 			// (Pregnantno)
-			String Pregnantno = getPregnantNo(visits, patientGender, Age);
-			System.err.println("IIT ML: (Pregnantno): " + Pregnantno);
+			SimpleObject Pregnantno = getPregnantNo(visits, patientGender, Age);
+			System.err.println("IIT ML: (Pregnantno): " + Pregnantno.get("result"));
 
 			// (PregnantNR)
-			String PregnantNR = getPregnantNR(patientGender, Age);
+			Integer PregnantNR = getPregnantNR(patientGender, Age);
 			System.err.println("IIT ML: (PregnantNR): " + PregnantNR);
 
 			// (Pregnantyes)
-			String Pregnantyes = getPregnantYes(visits, patientGender, Age);
-			System.err.println("IIT ML: (Pregnantyes): " + Pregnantyes);
+			SimpleObject Pregnantyes = getPregnantYes(visits, patientGender, Age);
+			System.err.println("IIT ML: (Pregnantyes): " + Pregnantyes.get("result"));
 
 			// (Breastfeedingno)
-			String Breastfeedingno = getBreastFeedingNo(visits, patientGender, Age);
-			System.err.println("IIT ML: (Breastfeedingno): " + Breastfeedingno);
+			SimpleObject Breastfeedingno = getBreastFeedingNo(visits, patientGender, Age);
+			System.err.println("IIT ML: (Breastfeedingno): " + Breastfeedingno.get("result"));
 
 			// (BreastfeedingNR)
-			String BreastfeedingNR = getBreastFeedingNR(patientGender, Age);
+			Integer BreastfeedingNR = getBreastFeedingNR(patientGender, Age);
 			System.err.println("IIT ML: (BreastfeedingNR): " + BreastfeedingNR);
 
 			// (Breastfeedingyes)
-			String Breastfeedingyes = getBreastFeedingYes(visits, patientGender, Age);
-			System.err.println("IIT ML: (Breastfeedingyes): " + Breastfeedingyes);
+			SimpleObject Breastfeedingyes = getBreastFeedingYes(visits, patientGender, Age);
+			System.err.println("IIT ML: (Breastfeedingyes): " + Breastfeedingyes.get("result"));
 
 			// (PopulationTypeGP)
 			Integer PopulationTypeGP = getPopulationTypeGP(demographics);
@@ -811,20 +811,20 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			System.err.println("IIT ML: (PopulationTypeKP): " + PopulationTypeKP);
 
 			// (AHDNo)
-			String AHDNo = getAHDNo(visits, Age);
-			System.err.println("IIT ML: (AHDNo): " + AHDNo);
+			SimpleObject AHDNo = getAHDNo(visits, cd4Counter, Age);
+			System.err.println("IIT ML: (AHDNo): " + AHDNo.get("result"));
 
 			// (AHDYes)
-			String AHDYes = getAHDYes(visits, Age);
-			System.err.println("IIT ML: (AHDYes): " + AHDYes);
+			SimpleObject AHDYes = getAHDYes(visits, cd4Counter, Age);
+			System.err.println("IIT ML: (AHDYes): " + AHDYes.get("result"));
 
 			// (OptimizedHIVRegimenNo)
-			String OptimizedHIVRegimenNo = getOptimizedHIVRegimenNo(pharmacy);
-			System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + OptimizedHIVRegimenNo);
+			SimpleObject OptimizedHIVRegimenNo = getOptimizedHIVRegimenNo(pharmacy);
+			System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + OptimizedHIVRegimenNo.get("result"));
 
 			// (OptimizedHIVRegimenYes)
-			String OptimizedHIVRegimenYes = getOptimizedHIVRegimenYes(pharmacy);
-			System.err.println("IIT ML: (OptimizedHIVRegimenYes): " + OptimizedHIVRegimenYes);
+			SimpleObject OptimizedHIVRegimenYes = getOptimizedHIVRegimenYes(pharmacy);
+			System.err.println("IIT ML: (OptimizedHIVRegimenYes): " + OptimizedHIVRegimenYes.get("result"));
 
 			// NB: Any number equal or above 200 is considered High Viral Load (HVL). Any below is LDL or suppressed or Low Viral Load (LVL)
 			// (most_recent_vlsuppressed)
@@ -879,24 +879,24 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					"IIT ML: Total number of regimens - nonfiltered (last 400 days): " + pharmTreatment.size());
 
 			// (num_hiv_regimens) -- Note: If zero, we show NA
-			String num_hiv_regimens = getNumHivRegimens(pharmTreatment);
-			System.err.println("IIT ML: (num_hiv_regimens): " + num_hiv_regimens);
+			SimpleObject num_hiv_regimens = getNumHivRegimens(pharmTreatment);
+			System.err.println("IIT ML: (num_hiv_regimens): " + num_hiv_regimens.get("result"));
 
 			// End Local Pull And Display
 
 			// Start Pulled Variables
 			patientPredictionVariables.put("Age", Age);
-			patientPredictionVariables.put("AHDNo", AHDNo);
-			patientPredictionVariables.put("AHDYes", AHDYes);
+			patientPredictionVariables.put("AHDNo", AHDNo.get("result"));
+			patientPredictionVariables.put("AHDYes", AHDYes.get("result"));
 			patientPredictionVariables.put("average_tca_last5", average_tca_last5);
 			patientPredictionVariables.put("averagelateness", averagelateness);
 			patientPredictionVariables.put("averagelateness_last10", averagelateness_last10);
 			patientPredictionVariables.put("averagelateness_last3", averagelateness_last3);
 			patientPredictionVariables.put("averagelateness_last5", averagelateness_last5);
 			patientPredictionVariables.put("BMI", BMI);
-			patientPredictionVariables.put("Breastfeedingno", Breastfeedingno);
+			patientPredictionVariables.put("Breastfeedingno", Breastfeedingno.get("result"));
 			patientPredictionVariables.put("BreastfeedingNR", BreastfeedingNR);
-			patientPredictionVariables.put("Breastfeedingyes", Breastfeedingyes);
+			patientPredictionVariables.put("Breastfeedingyes", Breastfeedingyes.get("result"));
 			patientPredictionVariables.put("DayFri", DayFri);
 			patientPredictionVariables.put("DayMon", DayMon);
 			patientPredictionVariables.put("DaySat", DaySat);
@@ -948,17 +948,17 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			patientPredictionVariables.put("n_lvl_threeyears", n_lvl_threeyears);
 			patientPredictionVariables.put("n_tests_threeyears", n_tests_threeyears);
 			patientPredictionVariables.put("NextAppointmentDate", NextAppointmentDate);
-			patientPredictionVariables.put("num_hiv_regimens", num_hiv_regimens);
-			patientPredictionVariables.put("OptimizedHIVRegimenNo", OptimizedHIVRegimenNo);
-			patientPredictionVariables.put("OptimizedHIVRegimenYes", OptimizedHIVRegimenYes);
+			patientPredictionVariables.put("num_hiv_regimens", num_hiv_regimens.get("result"));
+			patientPredictionVariables.put("OptimizedHIVRegimenNo", OptimizedHIVRegimenNo.get("result"));
+			patientPredictionVariables.put("OptimizedHIVRegimenYes", OptimizedHIVRegimenYes.get("result"));
 			patientPredictionVariables.put("PatientSourceOPD", PatientSourceOPD);
 			patientPredictionVariables.put("PatientSourceOther", PatientSourceOther);
 			patientPredictionVariables.put("PatientSourceVCT", PatientSourceVCT);
 			patientPredictionVariables.put("PopulationTypeGP", PopulationTypeGP);
 			patientPredictionVariables.put("PopulationTypeKP", PopulationTypeKP);
-			patientPredictionVariables.put("Pregnantno", Pregnantno);
+			patientPredictionVariables.put("Pregnantno", Pregnantno.get("result"));
 			patientPredictionVariables.put("PregnantNR", PregnantNR);
-			patientPredictionVariables.put("Pregnantyes", Pregnantyes);
+			patientPredictionVariables.put("Pregnantyes", Pregnantyes.get("result"));
 			patientPredictionVariables.put("recent_hvl_rate", recent_hvl_rate);
 			patientPredictionVariables.put("StabilityAssessmentStable", StabilityAssessmentStable);
 			patientPredictionVariables.put("StabilityAssessmentUnstable", StabilityAssessmentUnstable);
@@ -1265,24 +1265,29 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		return(ret);
 	}
 
-	private String getAHDNo(List<List<Object>> visits, Long Age) {
-		String ret = "NA";
-		if(visits != null) {
+	private SimpleObject getAHDNo(List<List<Object>> visits, List<List<Object>> cd4count, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
+		if(visits != null && cd4count != null) {
 			// Get the last visit
-			if (visits.size() > 0) {
+			if (visits.size() > 0 && cd4count.size() > 0) {
 				List<Object> visitObject = visits.get(visits.size() - 1);
-				// If WHO Stage in (1,2) and Age six and above, then 1, if Age five or below or
-				// WHO stage in (3,4), then 0, if Age over 6 and WHO Stage is NULL, then NA
-				if (visitObject.get(10) != null) {
+				List<Object> cd4Object = cd4count.get(cd4count.size() - 1);
+				// If WHO Stage in (1,2) or CD4 COUNT is greater than 200  and Age six and above, then 1,
+				// if Age five or below or WHO stage in (3,4) or CD4 COUNT is less than or equal to 200, then 0, if Age over 6 and WHO Stage is NULL, then NA
+				if (visitObject.get(10) != null && cd4Object.get(1) != null) {
 					String whoStage = (String) visitObject.get(10);
+					String patientCD4st = (String) cd4Object.get(1);
+					patientCD4st = patientCD4st.trim().toLowerCase();
 					whoStage = whoStage.trim().toLowerCase();
 					Integer whoStageInt = getIntegerValue(whoStage);
-					if((whoStageInt == 1 || whoStageInt == 2) && Age >= 6) {
-						ret = "1";
+					Integer patientCD4 = getIntegerValue(patientCD4st);
+					if((((whoStageInt == 1 || whoStageInt == 2)) || patientCD4 > 200)  && Age >= 6) {
+						ret.put("result", 1);
 						return(ret);
 					}
-					if((whoStageInt == 3 || whoStageInt == 4) && Age <= 5) {
-						ret = "0";
+					if((((whoStageInt == 3 || whoStageInt == 4)) || patientCD4 <= 200) && Age <= 5) {
+						ret.put("result", 0);
 						return(ret);
 					}
 				}
@@ -1291,24 +1296,29 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		return(ret);
 	}
 
-	private String getAHDYes(List<List<Object>> visits, Long Age) {
-		String ret = "NA";
-		if(visits != null) {
+	private SimpleObject getAHDYes(List<List<Object>> visits, List<List<Object>> cd4count, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
+		if(visits != null && cd4count != null) {
 			// Get the last visit
-			if (visits.size() > 0) {
+			if (visits.size() > 0 && cd4count.size() > 0) {
 				List<Object> visitObject = visits.get(visits.size() - 1);
-				// If WHO Stage in (3,4) or Age five or below, then 1, if Age is six or
-				// over and WHO stage in (1,2), then 0, if Age 6 or over and WHO Stage is NULL, then NA
-				if (visitObject.get(10) != null) {
+				List<Object> cd4Object = cd4count.get(cd4count.size() - 1);
+				// If WHO Stage in (3,4) or Age five or below or CD4 Count is less than or equal to 200, then 1,
+				// if Age is six or over and WHO stage in (1,2) or CD4count is greater than 200, then 0, if Age 6 or over and WHO Stage is NULL, then NA
+				if (visitObject.get(10) != null && cd4Object.get(1) != null) {
 					String whoStage = (String) visitObject.get(10);
+					String patientCD4st = (String) cd4Object.get(1);
+					patientCD4st = patientCD4st.trim().toLowerCase();
 					whoStage = whoStage.trim().toLowerCase();
 					Integer whoStageInt = getIntegerValue(whoStage);
-					if((whoStageInt == 3 || whoStageInt == 4) && Age <= 5) {
-						ret = "1";
+					Integer patientCD4 = getIntegerValue(patientCD4st);
+					if((((whoStageInt == 3 || whoStageInt == 4)) || patientCD4 <= 200) && Age <= 5) {
+						ret.put("result", 1);
 						return(ret);
 					}
-					if((whoStageInt == 1 || whoStageInt == 2) && Age >= 6) {
-						ret = "0";
+					if((((whoStageInt == 1 || whoStageInt == 2)) || patientCD4 > 200) && Age >= 6) {
+						ret.put("result", 0);
 						return(ret);
 					}
 				}
@@ -1331,8 +1341,9 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		return(ret);
 	}
 
-	private String getOptimizedHIVRegimenNo(List<List<Object>> pharmacy) {
-		String ret = "NA";
+	private SimpleObject getOptimizedHIVRegimenNo(List<List<Object>> pharmacy) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		// NB: limit to last 400 days
 		if(pharmacy != null) {
 			if (pharmacy.size() > 0) {
@@ -1352,22 +1363,23 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 							String drugName = (String) pharmacyObject.get(3);
 							drugName = drugName.toLowerCase();
 							if (drugName.contains("dtg")) {
-								ret = "0";
+								ret.put("result", 0);
 							} else {
-								ret = "1";
+								ret.put("result", 1);
 							}
 						}
 					}
 				} else {
-					ret = "NA";
+					ret.put("result", "NA");
 				}
 			}
 		}
 		return(ret);
 	}
 
-	private String getOptimizedHIVRegimenYes(List<List<Object>> pharmacy) {
-		String ret = "NA";
+	private SimpleObject getOptimizedHIVRegimenYes(List<List<Object>> pharmacy) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		// NB: limit to last 400 days
 		if(pharmacy != null) {
 			if (pharmacy.size() > 0) {
@@ -1387,14 +1399,14 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 							String drugName = (String) pharmacyObject.get(3);
 							drugName = drugName.toLowerCase();
 							if (drugName.contains("dtg")) {
-								ret = "1";
+								ret.put("result", 1);
 							} else {
-								ret = "0";
+								ret.put("result", 0);
 							}
 						}
 					}
 				} else {
-					ret = "NA";
+					ret.put("result", "NA");
 				}
 			}
 		}
@@ -1613,8 +1625,9 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		return(ret);
 	}
 
-	private String getBreastFeedingNo(List<List<Object>> visits, Integer gender, Long Age) {
-		String ret = "NA";
+	private SimpleObject getBreastFeedingNo(List<List<Object>> visits, Integer gender, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
 				// Get the last visit
@@ -1624,39 +1637,40 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						String isBreastFeeding = (String) visitObject.get(11);
 						// Gender 1: Male, Gender 2: Female
 						if (isBreastFeeding.trim().equalsIgnoreCase("yes")) {
-							ret = "0";
+							ret.put("result", 0);
 							return (ret);
 						}
 						if (isBreastFeeding.trim().equalsIgnoreCase("no")) {
-							ret = "1";
+							ret.put("result", 1);
 							return (ret);
 						}
 					} else {
-						ret = "NA";
+						ret.put("result", "NA");
 						return (ret);
 					}
 				}
 			}
 		} else {
-			ret = "0";
+			ret.put("result", 0);
 			return (ret);
 		}
 		return(ret);
 	}
 
-	private String getBreastFeedingNR(Integer gender, Long Age) {
-		String ret = "0";
+	private Integer getBreastFeedingNR(Integer gender, Long Age) {
+		Integer ret = 0;
 		// Gender 1: Male, Gender 2: Female
 		if(isFemaleOfChildBearingAge(gender, Age)) {
-			ret = "0";
+			ret = 0;
 		} else {
-			ret = "1";
+			ret = 1;
 		}
 		return(ret);
 	}
 
-	private String getBreastFeedingYes(List<List<Object>> visits, Integer gender, Long Age) {
-		String ret = "NA";
+	private SimpleObject getBreastFeedingYes(List<List<Object>> visits, Integer gender, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
 				// Get the last visit
@@ -1666,28 +1680,29 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						String isBreastFeeding = (String) visitObject.get(11);
 						// Gender 1: Male, Gender 2: Female
 						if (isBreastFeeding.trim().equalsIgnoreCase("no")) {
-							ret = "0";
+							ret.put("result", 0);
 							return (ret);
 						}
 						if (isBreastFeeding.trim().equalsIgnoreCase("yes")) {
-							ret = "1";
+							ret.put("result", 1);
 							return (ret);
 						}
 					} else {
-						ret = "NA";
+						ret.put("result", "NA");
 						return (ret);
 					}
 				}
 			}
 		} else {
-			ret = "0";
+			ret.put("result", 0);
 			return (ret);
 		}
 		return(ret);
 	}
 
-	private String getPregnantNo(List<List<Object>> visits, Integer gender, Long Age) {
-		String ret = "NA";
+	private SimpleObject getPregnantNo(List<List<Object>> visits, Integer gender, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
 				// Get the last visit
@@ -1697,40 +1712,41 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						String isPregnant = (String) visitObject.get(6);
 						// Gender 1: Male, Gender 2: Female
 						if (isPregnant.trim().equalsIgnoreCase("yes")) {
-							ret = "0";
+							ret.put("result", 0);
 							return (ret);
 						}
 						if (isPregnant.trim().equalsIgnoreCase("no")) {
-							ret = "1";
+							ret.put("result", 1);
 							return (ret);
 						}
 					} else {
-						ret = "NA";
+						ret.put("result", "NA");
 						return (ret);
 					}
 				}
 			}
 		} else {
-			ret = "0";
+			ret.put("result", 0);
 			return (ret);
 		}
 
 		return(ret);
 	}
 
-	private String getPregnantNR(Integer gender, Long Age) {
-		String ret = "NA";
+	private Integer getPregnantNR(Integer gender, Long Age) {
+		Integer ret = 0;
 		// Gender 1: Male, Gender 2: Female
 		if(isFemaleOfChildBearingAge(gender, Age)) {
-			ret = "0";
+			ret = 0;
 		} else  {
-			ret = "1";
+			ret = 1;
 		}
 		return(ret);
 	}
 
-	private String getPregnantYes(List<List<Object>> visits, Integer gender, Long Age) {
-		String ret = "NA";
+	private SimpleObject getPregnantYes(List<List<Object>> visits, Integer gender, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
 				// Get the last visit
@@ -1740,21 +1756,21 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						String isPregnant = (String) visitObject.get(6);
 						// Gender 1: Male, Gender 2: Female
 						if (isPregnant.trim().equalsIgnoreCase("no")) {
-							ret = "0";
+							ret.put("result", 0);
 							return (ret);
 						}
 						if (isPregnant.trim().equalsIgnoreCase("yes")) {
-							ret = "1";
+							ret.put("result", 1);
 							return (ret);
 						}
 					} else {
-						ret = "NA";
+						ret.put("result", "NA");
 						return (ret);
 					}
 				}
 			}
 		} else {
-			ret = "0";
+			ret.put("result", 0);
 			return (ret);
 		}
 		return(ret);
@@ -2669,8 +2685,9 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		return(ret);
 	}
 
-	private String getNumHivRegimens(Set<Treatment> treatments) {
-		String ret = "NA";
+	private SimpleObject getNumHivRegimens(Set<Treatment> treatments) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(treatments != null) {
 			Set<String> drugs = new HashSet<>(); // This will ensure we get unique drugs
 			for (Treatment in : treatments) {
@@ -2680,7 +2697,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					drugs.add(drug);
 				}
 			}
-			ret = drugs.size() > 0 ? String.valueOf(drugs.size()) : "NA";
+			ret.put("result", drugs.size() > 0 ? drugs.size() : "NA");
 		}
 		return(ret);
 	}

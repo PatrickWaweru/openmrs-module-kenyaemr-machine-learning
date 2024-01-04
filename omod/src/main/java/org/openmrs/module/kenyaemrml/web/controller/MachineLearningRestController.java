@@ -12,7 +12,8 @@ import org.openmrs.module.kenyaemrml.api.ModelService;
 import org.openmrs.module.kenyaemrml.domain.ModelInputFields;
 import org.openmrs.module.kenyaemrml.domain.ScoringResult;
 import org.openmrs.module.kenyaemrml.iit.Treatment;
-import org.openmrs.module.webservices.rest.SimpleObject;
+//import org.openmrs.module.webservices.rest.SimpleObject;
+import org.openmrs.ui.framework.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
 import org.springframework.http.HttpHeaders;
@@ -913,22 +914,22 @@ public class MachineLearningRestController extends BaseRestController {
 					System.err.println("IIT ML: (most_recent_art_adherencepoor): " + getMostRecentArtAdherencePoor(visits));
 
 					// (Pregnantno)
-					System.err.println("IIT ML: (Pregnantno): " + getPregnantNo(visits, patientGender, Age));
+					System.err.println("IIT ML: (Pregnantno): " + getPregnantNo(visits, patientGender, Age).get("result"));
 
 					// (PregnantNR)
 					System.err.println("IIT ML: (PregnantNR): " + getPregnantNR(patientGender, Age));
 
 					// (Pregnantyes)
-					System.err.println("IIT ML: (Pregnantyes): " + getPregnantYes(visits, patientGender, Age));
+					System.err.println("IIT ML: (Pregnantyes): " + getPregnantYes(visits, patientGender, Age).get("result"));
 
 					// (Breastfeedingno)
-					System.err.println("IIT ML: (Breastfeedingno): " + getBreastFeedingNo(visits, patientGender, Age));
+					System.err.println("IIT ML: (Breastfeedingno): " + getBreastFeedingNo(visits, patientGender, Age).get("result"));
 
 					// (BreastfeedingNR)
 					System.err.println("IIT ML: (BreastfeedingNR): " + getBreastFeedingNR(patientGender, Age));
 
 					// (Breastfeedingyes)
-					System.err.println("IIT ML: (Breastfeedingyes): " + getBreastFeedingYes(visits, patientGender, Age));
+					System.err.println("IIT ML: (Breastfeedingyes): " + getBreastFeedingYes(visits, patientGender, Age).get("result"));
 
 					// (PopulationTypeGP)
 					System.err.println("IIT ML: (PopulationTypeGP): " + getPopulationTypeGP(demographics));
@@ -937,16 +938,16 @@ public class MachineLearningRestController extends BaseRestController {
 					System.err.println("IIT ML: (PopulationTypeKP): " + getPopulationTypeKP(demographics));
 
 					// (AHDNo)
-					System.err.println("IIT ML: (AHDNo): " + getAHDNo(visits, cd4Counter, Age));
+					System.err.println("IIT ML: (AHDNo): " + getAHDNo(visits, cd4Counter, Age).get("result"));
 
 					// (AHDYes)
-					System.err.println("IIT ML: (AHDYes): " + getAHDYes(visits, cd4Counter, Age));
+					System.err.println("IIT ML: (AHDYes): " + getAHDYes(visits, cd4Counter, Age).get("result"));
 
 					// (OptimizedHIVRegimenNo)
-					System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + getOptimizedHIVRegimenNo(pharmacy));
+					System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + getOptimizedHIVRegimenNo(pharmacy).get("result"));
 
 					// (OptimizedHIVRegimenYes)
-					System.err.println("IIT ML: (OptimizedHIVRegimenYes): " + getOptimizedHIVRegimenYes(pharmacy));
+					System.err.println("IIT ML: (OptimizedHIVRegimenYes): " + getOptimizedHIVRegimenYes(pharmacy).get("result"));
 
 					// NB: Any number equal or above 200 is considered High Viral Load (HVL). Any below is LDL or suppressed or Low Viral Load (LVL)
 					// (most_recent_vlsuppressed)
@@ -996,7 +997,7 @@ public class MachineLearningRestController extends BaseRestController {
 							"IIT ML: Total number of regimens - nonfiltered (last 400 days): " + pharmTreatment.size());
 
 					// (num_hiv_regimens) -- Note: If zero, we show NA
-					System.err.println("IIT ML: (num_hiv_regimens): " + getNumHivRegimens(pharmTreatment));
+					System.err.println("IIT ML: (num_hiv_regimens): " + getNumHivRegimens(pharmTreatment).get("result"));
 
 					//End Appointments
 					System.err.println("IIT ML: END IIT ML TEST: " + new Date());
@@ -1096,8 +1097,9 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private String getAHDNo(List<List<Object>> visits, List<List<Object>> cd4count, Long Age) {
-		String ret = "NA";
+	private SimpleObject getAHDNo(List<List<Object>> visits, List<List<Object>> cd4count, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(visits != null && cd4count != null) {
 			// Get the last visit
 			if (visits.size() > 0 && cd4count.size() > 0) {
@@ -1113,11 +1115,11 @@ public class MachineLearningRestController extends BaseRestController {
 					Integer whoStageInt = getIntegerValue(whoStage);
 					Integer patientCD4 = getIntegerValue(patientCD4st);
 					if((((whoStageInt == 1 || whoStageInt == 2)) || patientCD4 > 200)  && Age >= 6) {
-						ret = "1";
+						ret.put("result", 1);
 						return(ret);
 					}
 					if((((whoStageInt == 3 || whoStageInt == 4)) || patientCD4 <= 200) && Age <= 5) {
-						ret = "0";
+						ret.put("result", 0);
 						return(ret);
 					}
 				}
@@ -1126,8 +1128,9 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private String getAHDYes(List<List<Object>> visits, List<List<Object>> cd4count, Long Age) {
-		String ret = "NA";
+	private SimpleObject getAHDYes(List<List<Object>> visits, List<List<Object>> cd4count, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(visits != null && cd4count != null) {
 			// Get the last visit
 			if (visits.size() > 0 && cd4count.size() > 0) {
@@ -1143,11 +1146,11 @@ public class MachineLearningRestController extends BaseRestController {
 					Integer whoStageInt = getIntegerValue(whoStage);
 					Integer patientCD4 = getIntegerValue(patientCD4st);
 					if((((whoStageInt == 3 || whoStageInt == 4)) || patientCD4 <= 200) && Age <= 5) {
-						ret = "1";
+						ret.put("result", 1);
 						return(ret);
 					}
 					if((((whoStageInt == 1 || whoStageInt == 2)) || patientCD4 > 200) && Age >= 6) {
-						ret = "0";
+						ret.put("result", 0);
 						return(ret);
 					}
 				}
@@ -1170,8 +1173,9 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private String getOptimizedHIVRegimenNo(List<List<Object>> pharmacy) {
-		String ret = "NA";
+	private SimpleObject getOptimizedHIVRegimenNo(List<List<Object>> pharmacy) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		// NB: limit to last 400 days
 		if(pharmacy != null) {
 			if (pharmacy.size() > 0) {
@@ -1191,22 +1195,23 @@ public class MachineLearningRestController extends BaseRestController {
 							String drugName = (String) pharmacyObject.get(3);
 							drugName = drugName.toLowerCase();
 							if (drugName.contains("dtg")) {
-								ret = "0";
+								ret.put("result", 0);
 							} else {
-								ret = "1";
+								ret.put("result", 1);
 							}
 						}
 					}
 				} else {
-					ret = "NA";
+					ret.put("result", "NA");
 				}
 			}
 		}
 		return(ret);
 	}
 
-	private String getOptimizedHIVRegimenYes(List<List<Object>> pharmacy) {
-		String ret = "NA";
+	private SimpleObject getOptimizedHIVRegimenYes(List<List<Object>> pharmacy) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		// NB: limit to last 400 days
 		if(pharmacy != null) {
 			if (pharmacy.size() > 0) {
@@ -1226,14 +1231,14 @@ public class MachineLearningRestController extends BaseRestController {
 							String drugName = (String) pharmacyObject.get(3);
 							drugName = drugName.toLowerCase();
 							if (drugName.contains("dtg")) {
-								ret = "1";
+								ret.put("result", 1);
 							} else {
-								ret = "0";
+								ret.put("result", 0);
 							}
 						}
 					}
 				} else {
-					ret = "NA";
+					ret.put("result", "NA");
 				}
 			}
 		}
@@ -1452,8 +1457,9 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private String getBreastFeedingNo(List<List<Object>> visits, Integer gender, Long Age) {
-		String ret = "NA";
+	private SimpleObject getBreastFeedingNo(List<List<Object>> visits, Integer gender, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
 				// Get the last visit
@@ -1463,39 +1469,40 @@ public class MachineLearningRestController extends BaseRestController {
 						String isBreastFeeding = (String) visitObject.get(11);
 						// Gender 1: Male, Gender 2: Female
 						if (isBreastFeeding.trim().equalsIgnoreCase("yes")) {
-							ret = "0";
+							ret.put("result", 0);
 							return (ret);
 						}
 						if (isBreastFeeding.trim().equalsIgnoreCase("no")) {
-							ret = "1";
+							ret.put("result", 1);
 							return (ret);
 						}
 					} else {
-						ret = "NA";
+						ret.put("result", "NA");
 						return (ret);
 					}
 				}
 			}
 		} else {
-			ret = "0";
+			ret.put("result", 0);
 			return (ret);
 		}
 		return(ret);
 	}
 
-	private String getBreastFeedingNR(Integer gender, Long Age) {
-		String ret = "0";
+	private Integer getBreastFeedingNR(Integer gender, Long Age) {
+		Integer ret = 0;
 		// Gender 1: Male, Gender 2: Female
 		if(isFemaleOfChildBearingAge(gender, Age)) {
-			ret = "0";
+			ret = 0;
 		} else {
-			ret = "1";
+			ret = 1;
 		}
 		return(ret);
 	}
 
-	private String getBreastFeedingYes(List<List<Object>> visits, Integer gender, Long Age) {
-		String ret = "NA";
+	private SimpleObject getBreastFeedingYes(List<List<Object>> visits, Integer gender, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
 				// Get the last visit
@@ -1505,28 +1512,29 @@ public class MachineLearningRestController extends BaseRestController {
 						String isBreastFeeding = (String) visitObject.get(11);
 						// Gender 1: Male, Gender 2: Female
 						if (isBreastFeeding.trim().equalsIgnoreCase("no")) {
-							ret = "0";
+							ret.put("result", 0);
 							return (ret);
 						}
 						if (isBreastFeeding.trim().equalsIgnoreCase("yes")) {
-							ret = "1";
+							ret.put("result", 1);
 							return (ret);
 						}
 					} else {
-						ret = "NA";
+						ret.put("result", "NA");
 						return (ret);
 					}
 				}
 			}
 		} else {
-			ret = "0";
+			ret.put("result", 0);
 			return (ret);
 		}
 		return(ret);
 	}
 
-	private String getPregnantNo(List<List<Object>> visits, Integer gender, Long Age) {
-		String ret = "NA";
+	private SimpleObject getPregnantNo(List<List<Object>> visits, Integer gender, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
 				// Get the last visit
@@ -1536,40 +1544,41 @@ public class MachineLearningRestController extends BaseRestController {
 						String isPregnant = (String) visitObject.get(6);
 						// Gender 1: Male, Gender 2: Female
 						if (isPregnant.trim().equalsIgnoreCase("yes")) {
-							ret = "0";
+							ret.put("result", 0);
 							return (ret);
 						}
 						if (isPregnant.trim().equalsIgnoreCase("no")) {
-							ret = "1";
+							ret.put("result", 1);
 							return (ret);
 						}
 					} else {
-						ret = "NA";
+						ret.put("result", "NA");
 						return (ret);
 					}
 				}
 			}
 		} else {
-			ret = "0";
+			ret.put("result", 0);
 			return (ret);
 		}
 
 		return(ret);
 	}
 
-	private String getPregnantNR(Integer gender, Long Age) {
-		String ret = "NA";
+	private Integer getPregnantNR(Integer gender, Long Age) {
+		Integer ret = 0;
 		// Gender 1: Male, Gender 2: Female
 		if(isFemaleOfChildBearingAge(gender, Age)) {
-			ret = "0";
+			ret = 0;
 		} else  {
-			ret = "1";
+			ret = 1;
 		}
 		return(ret);
 	}
 
-	private String getPregnantYes(List<List<Object>> visits, Integer gender, Long Age) {
-		String ret = "NA";
+	private SimpleObject getPregnantYes(List<List<Object>> visits, Integer gender, Long Age) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
 				// Get the last visit
@@ -1579,21 +1588,21 @@ public class MachineLearningRestController extends BaseRestController {
 						String isPregnant = (String) visitObject.get(6);
 						// Gender 1: Male, Gender 2: Female
 						if (isPregnant.trim().equalsIgnoreCase("no")) {
-							ret = "0";
+							ret.put("result", 0);
 							return (ret);
 						}
 						if (isPregnant.trim().equalsIgnoreCase("yes")) {
-							ret = "1";
+							ret.put("result", 1);
 							return (ret);
 						}
 					} else {
-						ret = "NA";
+						ret.put("result", "NA");
 						return (ret);
 					}
 				}
 			}
 		} else {
-			ret = "0";
+			ret.put("result", 0);
 			return (ret);
 		}
 		return(ret);
@@ -2491,8 +2500,9 @@ public class MachineLearningRestController extends BaseRestController {
 		return(ret);
 	}
 
-	private String getNumHivRegimens(Set<Treatment> treatments) {
-		String ret = "NA";
+	private SimpleObject getNumHivRegimens(Set<Treatment> treatments) {
+		SimpleObject ret = SimpleObject.create("result", "NA");
+
 		if(treatments != null) {
 			Set<String> drugs = new HashSet<>(); // This will ensure we get unique drugs
 			for (Treatment in : treatments) {
@@ -2502,7 +2512,7 @@ public class MachineLearningRestController extends BaseRestController {
 					drugs.add(drug);
 				}
 			}
-			ret = drugs.size() > 0 ? String.valueOf(drugs.size()) : "NA";
+			ret.put("result", drugs.size() > 0 ? drugs.size() : "NA");
 		}
 		return(ret);
 	}
