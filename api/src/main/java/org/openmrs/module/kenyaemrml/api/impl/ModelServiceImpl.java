@@ -234,7 +234,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			String strIITHighRiskThreshold = globalIITHighRiskThreshold.getPropertyValue();
 			Double decIITHighRiskThreshold = Double.valueOf(strIITHighRiskThreshold);
 			// Model Configuration
-			modelConfigs.put("modelId", "XGB_IIT_01022024");
+			modelConfigs.put("modelId", "XGB_IIT_01042024");
 			String today = (new SimpleDateFormat("yyyy-MM-dd")).format(new Date());
 			modelConfigs.put("encounterDate", today);
 			modelConfigs.put("facilityId", "");
@@ -1266,7 +1266,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	}
 
 	private SimpleObject getAHDNo(List<List<Object>> visits, List<List<Object>> cd4count, Long Age) {
-		SimpleObject ret = SimpleObject.create("result", "NA");
+		SimpleObject ret = SimpleObject.create("result", -10000);
 
 		if(visits != null && cd4count != null) {
 			// Get the last visit
@@ -1297,7 +1297,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	}
 
 	private SimpleObject getAHDYes(List<List<Object>> visits, List<List<Object>> cd4count, Long Age) {
-		SimpleObject ret = SimpleObject.create("result", "NA");
+		SimpleObject ret = SimpleObject.create("result", -10000);
 
 		if(visits != null && cd4count != null) {
 			// Get the last visit
@@ -1342,7 +1342,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	}
 
 	private SimpleObject getOptimizedHIVRegimenNo(List<List<Object>> pharmacy) {
-		SimpleObject ret = SimpleObject.create("result", "NA");
+		SimpleObject ret = SimpleObject.create("result", -10000);
 
 		// NB: limit to last 400 days
 		if(pharmacy != null) {
@@ -1370,7 +1370,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						}
 					}
 				} else {
-					ret.put("result", "NA");
+					ret.put("result", -10000);
 				}
 			}
 		}
@@ -1378,7 +1378,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	}
 
 	private SimpleObject getOptimizedHIVRegimenYes(List<List<Object>> pharmacy) {
-		SimpleObject ret = SimpleObject.create("result", "NA");
+		SimpleObject ret = SimpleObject.create("result", -10000);
 
 		// NB: limit to last 400 days
 		if(pharmacy != null) {
@@ -1406,7 +1406,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						}
 					}
 				} else {
-					ret.put("result", "NA");
+					ret.put("result", -10000);
 				}
 			}
 		}
@@ -1626,7 +1626,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	}
 
 	private SimpleObject getBreastFeedingNo(List<List<Object>> visits, Integer gender, Long Age) {
-		SimpleObject ret = SimpleObject.create("result", "NA");
+		SimpleObject ret = SimpleObject.create("result", -10000);
 
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
@@ -1645,7 +1645,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 							return (ret);
 						}
 					} else {
-						ret.put("result", "NA");
+						ret.put("result", -10000);
 						return (ret);
 					}
 				}
@@ -1669,7 +1669,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	}
 
 	private SimpleObject getBreastFeedingYes(List<List<Object>> visits, Integer gender, Long Age) {
-		SimpleObject ret = SimpleObject.create("result", "NA");
+		SimpleObject ret = SimpleObject.create("result", -10000);
 
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
@@ -1688,7 +1688,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 							return (ret);
 						}
 					} else {
-						ret.put("result", "NA");
+						ret.put("result", -10000);
 						return (ret);
 					}
 				}
@@ -1701,7 +1701,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	}
 
 	private SimpleObject getPregnantNo(List<List<Object>> visits, Integer gender, Long Age) {
-		SimpleObject ret = SimpleObject.create("result", "NA");
+		SimpleObject ret = SimpleObject.create("result", -10000);
 
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
@@ -1720,7 +1720,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 							return (ret);
 						}
 					} else {
-						ret.put("result", "NA");
+						ret.put("result", -10000);
 						return (ret);
 					}
 				}
@@ -1745,7 +1745,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	}
 
 	private SimpleObject getPregnantYes(List<List<Object>> visits, Integer gender, Long Age) {
-		SimpleObject ret = SimpleObject.create("result", "NA");
+		SimpleObject ret = SimpleObject.create("result", -10000);
 
 		if(isFemaleOfChildBearingAge(gender, Age)) {
 			if (visits != null) {
@@ -1764,7 +1764,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 							return (ret);
 						}
 					} else {
-						ret.put("result", "NA");
+						ret.put("result", -10000);
 						return (ret);
 					}
 				}
@@ -2686,7 +2686,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 	}
 
 	private SimpleObject getNumHivRegimens(Set<Treatment> treatments) {
-		SimpleObject ret = SimpleObject.create("result", "NA");
+		SimpleObject ret = SimpleObject.create("result", -10000);
 
 		if(treatments != null) {
 			Set<String> drugs = new HashSet<>(); // This will ensure we get unique drugs
@@ -2697,7 +2697,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					drugs.add(drug);
 				}
 			}
-			ret.put("result", drugs.size() > 0 ? drugs.size() : "NA");
+			ret.put("result", drugs.size() > 0 ? drugs.size() : -10000);
 		}
 		return(ret);
 	}
