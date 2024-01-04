@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -28,6 +29,7 @@ import org.apache.commons.lang.time.DateUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
 import org.dmg.pmml.FieldName;
@@ -988,12 +990,21 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					ObjectNode jsonNode = (ObjectNode) mapper.readTree(mlScoreResponse);
 					if (jsonNode != null) {
 						System.out.println("IIT ML: Got ML Score Payload as: " + mlScoreResponse);
-						Double riskScore = jsonNode.get("result").get("predictions").get("Probability_1").getDoubleValue();
-						
-						System.out.println("IIT ML: Got ML score as: " + riskScore);
-						if(riskScore == null) {
-							riskScore = new Double(0.00);
+						Double riskScore = 0.00;
+						// Double riskScore = jsonNode.get("result").get("predictions").get("Probability_1").getDoubleValue();
+						// Double riskScore = jsonNode.get("result").get("predictions").get("probability(1)").getDoubleValue();
+						JsonNode result = jsonNode.get("result");
+						if(result != null) {
+							JsonNode predictions = result.get("predictions");
+							if(predictions != null) {
+								JsonNode probability = predictions.get("probability(1)");
+								if(probability != null) {
+									riskScore = probability.getDoubleValue();
+								}
+							}
 						}
+
+						System.out.println("IIT ML: Got ML score as: " + riskScore);
 
 						// Check if there is an existing record. In case we want to save, we need to modify record instead of creating a new one
 						PatientRiskScore currentPatientRiskScore = Context.getService(MLinKenyaEMRService.class).getLatestPatientRiskScoreByPatient(patient);
