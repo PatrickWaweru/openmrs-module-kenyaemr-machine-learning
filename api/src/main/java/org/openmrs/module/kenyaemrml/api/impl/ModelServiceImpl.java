@@ -1,11 +1,9 @@
 package org.openmrs.module.kenyaemrml.api.impl;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.Month;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -18,15 +16,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang.time.DateUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.codehaus.jackson.JsonNode;
@@ -36,34 +29,18 @@ import org.dmg.pmml.FieldName;
 import org.hibernate.Hibernate;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
-import org.joda.time.Days;
 import org.jpmml.evaluator.Computable;
 import org.jpmml.evaluator.Evaluator;
 import org.jpmml.evaluator.FieldValue;
 import org.jpmml.evaluator.InputField;
 import org.jpmml.evaluator.OutputField;
-import org.openmrs.Concept;
-import org.openmrs.Encounter;
-import org.openmrs.Form;
 import org.openmrs.GlobalProperty;
-import org.openmrs.Location;
-import org.openmrs.Obs;
 import org.openmrs.Patient;
 import org.openmrs.PatientIdentifier;
 import org.openmrs.PatientIdentifierType;
-import org.openmrs.PatientProgram;
-import org.openmrs.Program;
 import org.openmrs.api.AdministrationService;
-import org.openmrs.api.ProgramWorkflowService;
 import org.openmrs.api.context.Context;
 import org.openmrs.api.impl.BaseOpenmrsService;
-import org.openmrs.logic.op.In;
-import org.openmrs.module.kenyaemr.Dictionary;
-import org.openmrs.module.kenyaemr.api.KenyaEmrService;
-import org.openmrs.module.kenyaemr.metadata.HivMetadata;
-import org.openmrs.module.kenyaemr.metadata.MchMetadata;
-import org.openmrs.module.kenyaemr.util.EncounterBasedRegimenUtils;
-import org.openmrs.module.kenyaemr.wrapper.PatientWrapper;
 import org.openmrs.module.kenyaemrml.api.HTSMLService;
 import org.openmrs.module.kenyaemrml.api.IITMLService;
 import org.openmrs.module.kenyaemrml.api.MLUtils;
@@ -74,10 +51,6 @@ import org.openmrs.module.kenyaemrml.domain.ScoringResult;
 import org.openmrs.module.kenyaemrml.iit.Appointment;
 import org.openmrs.module.kenyaemrml.iit.PatientRiskScore;
 import org.openmrs.module.kenyaemrml.iit.Treatment;
-import org.openmrs.module.metadatadeploy.MetadataUtils;
-import org.openmrs.module.reporting.common.Age;
-import org.openmrs.parameter.EncounterSearchCriteria;
-import org.openmrs.parameter.EncounterSearchCriteriaBuilder;
 import org.openmrs.ui.framework.SimpleObject;
 
 /**
@@ -86,6 +59,9 @@ import org.openmrs.ui.framework.SimpleObject;
 public class ModelServiceImpl extends BaseOpenmrsService implements ModelService {
 	
 	private Log log = LogFactory.getLog(this.getClass());
+
+	// Enable/Disable debug mode -- Saves all prediction variables and payload into the DB for debugging
+	private final boolean debugMode = false;
 
 	private SessionFactory sessionFactory;
 	
@@ -280,13 +256,13 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					.executeSQL(cd4Query,
 							true); // PatientPK(0), lastcd4(1)
 
-			System.err.println("IIT ML: Got visits: " + visits.size());
-			System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
-			System.err.println("IIT ML: Got demographics: " + demographics.size());
-			System.err.println("IIT ML: Got lab: " + lab.size());
-			System.err.println("IIT ML: Got ART: " + art.size());
-			System.err.println("IIT ML: DWAPI ETL last update: " + lastETLUpdate.size());
-			System.err.println("IIT ML: Got Last CD4 count: " + cd4Counter.size());
+			if(debugMode) System.err.println("IIT ML: Got visits: " + visits.size());
+			if(debugMode) System.err.println("IIT ML: Got pharmacy: " + pharmacy.size());
+			if(debugMode) System.err.println("IIT ML: Got demographics: " + demographics.size());
+			if(debugMode) System.err.println("IIT ML: Got lab: " + lab.size());
+			if(debugMode) System.err.println("IIT ML: Got ART: " + art.size());
+			if(debugMode) System.err.println("IIT ML: DWAPI ETL last update: " + lastETLUpdate.size());
+			if(debugMode) System.err.println("IIT ML: Got Last CD4 count: " + cd4Counter.size());
 
 			// January 2019 reference date
 			Date jan2019 = new Date(119, 0, 1);
@@ -330,7 +306,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 
 			// Last ETL Update
 			String lastETLUpdateSt = getLastETLUpdate(lastETLUpdate);
-			System.err.println("IIT ML: Last time the ETL was updated (lastETLUpdateSt): " + lastETLUpdateSt);
+			if(debugMode) System.err.println("IIT ML: Last time the ETL was updated (lastETLUpdateSt): " + lastETLUpdateSt);
 
 			// Start Local Pull And Display
 			// Now that we have visits and pharmacy we can filter the data and apply logic
@@ -362,15 +338,15 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 											.println("IIT ML: appointment before encounter record rejected: " + ls);
 								}
 							} else {
-								System.err.println("IIT ML: 365 days record rejected: " + ls);
+								if(debugMode) System.err.println("IIT ML: 365 days record rejected: " + ls);
 							}
 						} else {
-							System.err.println("IIT ML: 2019 record rejected: " + ls);
+							if(debugMode) System.err.println("IIT ML: 2019 record rejected: " + ls);
 						}
 					}
 				}
 			}
-			System.err.println("IIT ML: visits before: " + visitAppts.size());
+			if(debugMode) System.err.println("IIT ML: visits before: " + visitAppts.size());
 			processRecords(visitAppts);
 
 			//Pharmacy
@@ -429,48 +405,48 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					}
 				}
 			}
-			System.err.println("IIT ML: pharmacy before: " + pharmAppts.size());
+			if(debugMode) System.err.println("IIT ML: pharmacy before: " + pharmAppts.size());
 			processRecords(pharmAppts);
 
-			System.err.println("IIT ML: Got Filtered visits: " + visitAppts.size());
-			System.err.println("IIT ML: Got Filtered pharmacy: " + pharmAppts.size());
+			if(debugMode) System.err.println("IIT ML: Got Filtered visits: " + visitAppts.size());
+			if(debugMode) System.err.println("IIT ML: Got Filtered pharmacy: " + pharmAppts.size());
 
 			//Combine the two sets
 			Set<Appointment> allAppts = new HashSet<>();
 			allAppts.addAll(visitAppts);
 			allAppts.addAll(pharmAppts);
-			System.err.println("IIT ML: Prepared appointments before: " + allAppts.size());
+			if(debugMode) System.err.println("IIT ML: Prepared appointments before: " + allAppts.size());
 			processRecords(allAppts);
 
 			// New model (n_appts)
 			Integer n_appts = allAppts.size();
-			System.err.println("IIT ML: Final appointments (n_appts): " + n_appts);
+			if(debugMode) System.err.println("IIT ML: Final appointments (n_appts): " + n_appts);
 
 			List<Appointment> sortedVisits = sortAppointmentsByEncounterDate(visitAppts);
 			List<Appointment> sortedRecords = sortAppointmentsByEncounterDate(allAppts);
 			List<Integer> missedRecord = calculateLateness(sortedRecords);
 
-			System.err.println("IIT ML: Missed before: " + missedRecord);
+			if(debugMode) System.err.println("IIT ML: Missed before: " + missedRecord);
 
 			Integer missed1 = getMissed1(missedRecord);
-			System.err.println("IIT ML: Missed by at least one (missed1): " + missed1);
+			if(debugMode) System.err.println("IIT ML: Missed by at least one (missed1): " + missed1);
 
 			Integer missed5 = getMissed5(missedRecord);
-			System.err.println("IIT ML: Missed by at least five (missed5): " + missed5);
+			if(debugMode) System.err.println("IIT ML: Missed by at least five (missed5): " + missed5);
 
 			Integer missed30 = getMissed30(missedRecord);
-			System.err.println("IIT ML: Missed by at least thirty (missed30): " + missed30);
+			if(debugMode) System.err.println("IIT ML: Missed by at least thirty (missed30): " + missed30);
 
 			Integer missed1Last5 = getMissed1Last5(missedRecord);
-			System.err.println(
+			if(debugMode) System.err.println(
 					"IIT ML: Missed by at least one in the latest 5 appointments (missed1_Last5): " + missed1Last5);
 
 			Integer missed5Last5 = getMissed5Last5(missedRecord);
-			System.err.println(
+			if(debugMode) System.err.println(
 					"IIT ML: Missed by at least five in the latest 5 appointments (missed5_Last5): " + missed5Last5);
 
 			Integer missed30Last5 = getMissed30Last5(missedRecord);
-			System.err.println(
+			if(debugMode) System.err.println(
 					"IIT ML: Missed by at least thirty in the latest 5 appointments (missed30_Last5): "
 							+ missed30Last5);
 
@@ -498,177 +474,175 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			 */
 
 			// New model (late)
-			System.err.println("IIT ML: new model (late): " + missed1);
+			if(debugMode) System.err.println("IIT ML: new model (late): " + missed1);
 
 			// New model (late28)
 			Integer late28 = getLate28(missedRecord);
-			System.err.println("IIT ML: new model (late28): " + late28);
+			if(debugMode) System.err.println("IIT ML: new model (late28): " + late28);
 
 			// New model (averagelateness)
 			Double averagelateness = getAverageLateness(missedRecord, allAppts.size());
-			System.err.println(
+			if(debugMode) System.err.println(
 					"IIT ML: new model (averagelateness): " + averagelateness);
 
 			// New model (late_rate)
 			Double late_rate = getLateRate(missed1, allAppts.size());
-			System.err.println("IIT ML: new model (late_rate): " + late_rate);
+			if(debugMode) System.err.println("IIT ML: new model (late_rate): " + late_rate);
 
 			// New model (late28_rate)
 			Double late28_rate = getLate28Rate(late28, allAppts.size());
-			System.err.println("IIT ML: new model (late28_rate): " + late28_rate);
+			if(debugMode) System.err.println("IIT ML: new model (late28_rate): " + late28_rate);
 
 			// New model (visit_1)
 			Integer visit_1 = getVisit1(missedRecord);
-			System.err.println("IIT ML: new model (visit_1): " + visit_1);
+			if(debugMode) System.err.println("IIT ML: new model (visit_1): " + visit_1);
 
 			// New model (visit_2)
 			Integer visit_2 = getVisit2(missedRecord);
-			System.err.println("IIT ML: new model (visit_2): " + visit_2);
+			if(debugMode) System.err.println("IIT ML: new model (visit_2): " + visit_2);
 
 			// New model (visit_3)
 			Integer visit_3 = getVisit3(missedRecord);
-			System.err.println("IIT ML: new model (visit_3): " + visit_3);
+			if(debugMode) System.err.println("IIT ML: new model (visit_3): " + visit_3);
 
 			// New model (visit_4)
 			Integer visit_4 = getVisit4(missedRecord);
-			System.err.println("IIT ML: new model (visit_4): " + visit_4);
+			if(debugMode) System.err.println("IIT ML: new model (visit_4): " + visit_4);
 
 			// New model (visit_5)
 			Integer visit_5 = getVisit5(missedRecord);
-			System.err.println("IIT ML: new model (visit_5): " + visit_5);
+			if(debugMode) System.err.println("IIT ML: new model (visit_5): " + visit_5);
 
 			// New model (late_last10)
 			Integer late_last10 = getLateLast10(missedRecord);
-			System.err.println("IIT ML: new model (late_last10): " + late_last10);
+			if(debugMode) System.err.println("IIT ML: new model (late_last10): " + late_last10);
 
 			// New model (NextAppointmentDate)
 			Integer NextAppointmentDate = getNextAppointmentDate(sortedRecords);
-			System.err.println("IIT ML: new model (NextAppointmentDate): " + NextAppointmentDate);
+			if(debugMode) System.err.println("IIT ML: new model (NextAppointmentDate): " + NextAppointmentDate);
 
 			// New model (late_last3)
 			Integer late_last3 = getLateLast3(missedRecord);
-			System.err.println("IIT ML: new model (late_last3): " + late_last3);
+			if(debugMode) System.err.println("IIT ML: new model (late_last3): " + late_last3);
 
 			// New model (averagelateness_last3)
 			Double averagelateness_last3 = getAverageLatenessLast3(missedRecord);
-			System.err
-					.println("IIT ML: new model (averagelateness_last3): " + averagelateness_last3);
+			if(debugMode) System.err.println("IIT ML: new model (averagelateness_last3): " + averagelateness_last3);
 
 			// New model (averagelateness_last10)
 			Double averagelateness_last10 = getAverageLatenessLast10(missedRecord);
-			System.err.println(
+			if(debugMode) System.err.println(
 					"IIT ML: new model (averagelateness_last10): " + averagelateness_last10);
 
 			// New model (late_last5)
 			Integer late_last5 = getLateLast5(missedRecord);
-			System.err.println("IIT ML: new model (late_last5): " + late_last5);
+			if(debugMode) System.err.println("IIT ML: new model (late_last5): " + late_last5);
 
 			// New model (averagelateness_last5)
 			Double averagelateness_last5 = getAverageLatenessLast5(missedRecord);
-			System.err
-					.println("IIT ML: new model (averagelateness_last5): " + averagelateness_last5);
+			if(debugMode) System.err.println("IIT ML: new model (averagelateness_last5): " + averagelateness_last5);
 
 			// New model (average_tca_last5)
 			Double average_tca_last5 = getAverageTCALast5(sortedRecords);
-			System.err.println("IIT ML: new model (average_tca_last5): " + average_tca_last5);
+			if(debugMode) System.err.println("IIT ML: new model (average_tca_last5): " + average_tca_last5);
 
 			// New model (unscheduled_rate)
 			Double unscheduled_rate = getUnscheduledRate(visits);
-			System.err.println("IIT ML: new model (unscheduled_rate): " + unscheduled_rate);
+			if(debugMode) System.err.println("IIT ML: new model (unscheduled_rate): " + unscheduled_rate);
 
 			// New model (unscheduled_rate_last5)
 			Double unscheduled_rate_last5 = getUnscheduledRateLast5(visits);
-			System.err.println("IIT ML: new model (unscheduled_rate_last5): " + unscheduled_rate_last5);
+			if(debugMode) System.err.println("IIT ML: new model (unscheduled_rate_last5): " + unscheduled_rate_last5);
 
 			// New model (MonthApr)
 			Integer MonthApr = getMonthApr(sortedRecords);
-			System.err.println("IIT ML: new model (MonthApr): " + MonthApr);
+			if(debugMode) System.err.println("IIT ML: new model (MonthApr): " + MonthApr);
 
 			// New model (MonthAug)
 			Integer MonthAug = getMonthAug(sortedRecords);
-			System.err.println("IIT ML: new model (MonthAug): " + MonthAug);
+			if(debugMode) System.err.println("IIT ML: new model (MonthAug): " + MonthAug);
 
 			// New model (MonthDec)
 			Integer MonthDec = getMonthDec(sortedRecords);
-			System.err.println("IIT ML: new model (MonthDec): " + MonthDec);
+			if(debugMode) System.err.println("IIT ML: new model (MonthDec): " + MonthDec);
 
 			// New model (MonthFeb)
 			Integer MonthFeb = getMonthFeb(sortedRecords);
-			System.err.println("IIT ML: new model (MonthFeb): " + MonthFeb);
+			if(debugMode) System.err.println("IIT ML: new model (MonthFeb): " + MonthFeb);
 
 			// New model (MonthJan)
 			Integer MonthJan = getMonthJan(sortedRecords);
-			System.err.println("IIT ML: new model (MonthJan): " + MonthJan);
+			if(debugMode) System.err.println("IIT ML: new model (MonthJan): " + MonthJan);
 
 			// New model (MonthJul)
 			Integer MonthJul = getMonthJul(sortedRecords);
-			System.err.println("IIT ML: new model (MonthJul): " + MonthJul);
+			if(debugMode) System.err.println("IIT ML: new model (MonthJul): " + MonthJul);
 
 			// New model (MonthJun)
 			Integer MonthJun = getMonthJun(sortedRecords);
-			System.err.println("IIT ML: new model (MonthJun): " + MonthJun);
+			if(debugMode) System.err.println("IIT ML: new model (MonthJun): " + MonthJun);
 
 			// New model (MonthMar)
 			Integer MonthMar = getMonthMar(sortedRecords);
-			System.err.println("IIT ML: new model (MonthMar): " + MonthMar);
+			if(debugMode) System.err.println("IIT ML: new model (MonthMar): " + MonthMar);
 
 			// New model (MonthMay)
 			Integer MonthMay = getMonthMay(sortedRecords);
-			System.err.println("IIT ML: new model (MonthMay): " + MonthMay);
+			if(debugMode) System.err.println("IIT ML: new model (MonthMay): " + MonthMay);
 
 			// New model (MonthNov)
 			Integer MonthNov = getMonthNov(sortedRecords);
-			System.err.println("IIT ML: new model (MonthNov): " + MonthNov);
+			if(debugMode) System.err.println("IIT ML: new model (MonthNov): " + MonthNov);
 
 			// New model (MonthOct)
 			Integer MonthOct = getMonthOct(sortedRecords);
-			System.err.println("IIT ML: new model (MonthOct): " + MonthOct);
+			if(debugMode) System.err.println("IIT ML: new model (MonthOct): " + MonthOct);
 
 			// New model (MonthSep)
 			Integer MonthSep = getMonthSep(sortedRecords);
-			System.err.println("IIT ML: new model (MonthSep): " + MonthSep);
+			if(debugMode) System.err.println("IIT ML: new model (MonthSep): " + MonthSep);
 
 			// New model (DayFri)
 			Integer DayFri = getDayFri(sortedRecords);
-			System.err.println("IIT ML: new model (DayFri): " + DayFri);
+			if(debugMode) System.err.println("IIT ML: new model (DayFri): " + DayFri);
 
 			// New model (DayMon)
 			Integer DayMon = getDayMon(sortedRecords);
-			System.err.println("IIT ML: new model (DayMon): " + DayMon);
+			if(debugMode) System.err.println("IIT ML: new model (DayMon): " + DayMon);
 
 			// New model (DaySat)
 			Integer DaySat = getDaySat(sortedRecords);
-			System.err.println("IIT ML: new model (DaySat): " + DaySat);
+			if(debugMode) System.err.println("IIT ML: new model (DaySat): " + DaySat);
 
 			// New model (DaySun)
 			Integer DaySun = getDaySun(sortedRecords);
-			System.err.println("IIT ML: new model (DaySun): " + DaySun);
+			if(debugMode) System.err.println("IIT ML: new model (DaySun): " + DaySun);
 
 			// New model (DayThu)
 			Integer DayThu = getDayThu(sortedRecords);
-			System.err.println("IIT ML: new model (DayThu): " + DayThu);
+			if(debugMode) System.err.println("IIT ML: new model (DayThu): " + DayThu);
 
 			// New model (DayTue)
 			Integer DayTue = getDayTue(sortedRecords);
-			System.err.println("IIT ML: new model (DayTue): " + DayTue);
+			if(debugMode) System.err.println("IIT ML: new model (DayTue): " + DayTue);
 
 			// New model (DayWed)
 			Integer DayWed = getDayWed(sortedRecords);
-			System.err.println("IIT ML: new model (DayWed): " + DayWed);
+			if(debugMode) System.err.println("IIT ML: new model (DayWed): " + DayWed);
 
 			// End new model
 
 			// (Weight)
 			Double weight = getWeight(visits);
-			System.err.println("IIT ML: (Weight): " + weight);
+			if(debugMode) System.err.println("IIT ML: (Weight): " + weight);
 
 			// (Height)
 			Double height = getHeight(visits);
-			System.err.println("IIT ML: (Height): " + height);
+			if(debugMode) System.err.println("IIT ML: (Height): " + height);
 
 			// (BMI) -- NB: If zero, return NA
 			Double BMI = getBMI(height, weight);
-			System.err.println("IIT ML: (BMI): " + BMI);
+			if(debugMode) System.err.println("IIT ML: (BMI): " + BMI);
 
 			// Gender (Male == 1 and Female == 2)
 			Integer patientGender = 0;
@@ -683,177 +657,177 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 
 			// (GenderFemale)
 			Integer GenderFemale = female;
-			System.err.println("IIT ML: (GenderFemale): " + female);
+			if(debugMode) System.err.println("IIT ML: (GenderFemale): " + female);
 
 			// (GenderMale)
 			Integer GenderMale = male;
-			System.err.println("IIT ML: (GenderMale): " + male);
+			if(debugMode) System.err.println("IIT ML: (GenderMale): " + male);
 
 			// (PatientSourceOPD)
 			Integer PatientSourceOPD = getPatientSourceOPD(demographics);
-			System.err.println("IIT ML: (PatientSourceOPD): " + PatientSourceOPD);
+			if(debugMode) System.err.println("IIT ML: (PatientSourceOPD): " + PatientSourceOPD);
 
 			// (PatientSourceOther)
 			Integer PatientSourceOther = getPatientSourceOther(demographics);
-			System.err.println("IIT ML: (PatientSourceOther): " + PatientSourceOther);
+			if(debugMode) System.err.println("IIT ML: (PatientSourceOther): " + PatientSourceOther);
 
 			// (PatientSourceVCT)
 			Integer PatientSourceVCT = getPatientSourceVCT(demographics);
-			System.err.println("IIT ML: (PatientSourceVCT): " + PatientSourceVCT);
+			if(debugMode) System.err.println("IIT ML: (PatientSourceVCT): " + PatientSourceVCT);
 
 			// (Age)
 			Long Age = getAgeYears(demographics);
-			System.err.println("IIT ML: (Age): " + Age);
+			if(debugMode) System.err.println("IIT ML: (Age): " + Age);
 
 			// (MaritalStatusDivorced)
 			Integer MaritalStatusDivorced = getMaritalStatusDivorced(demographics, Age);
-			System.err.println("IIT ML: (MaritalStatusDivorced): " + MaritalStatusDivorced);
+			if(debugMode) System.err.println("IIT ML: (MaritalStatusDivorced): " + MaritalStatusDivorced);
 
 			// (MaritalStatusMarried)
 			Integer MaritalStatusMarried = getMaritalStatusMarried(demographics, Age);
-			System.err.println("IIT ML: (MaritalStatusMarried): " + MaritalStatusMarried);
+			if(debugMode) System.err.println("IIT ML: (MaritalStatusMarried): " + MaritalStatusMarried);
 
 			// (MaritalStatusMinor)
 			Integer MaritalStatusMinor = getMaritalStatusMinor(Age);
-			System.err.println("IIT ML: (MaritalStatusMinor): " + MaritalStatusMinor);
+			if(debugMode) System.err.println("IIT ML: (MaritalStatusMinor): " + MaritalStatusMinor);
 
 			// (MaritalStatusOther)
 			Integer MaritalStatusOther = getMaritalStatusOther(demographics, Age);
-			System.err.println("IIT ML: (MaritalStatusOther): " + MaritalStatusOther);
+			if(debugMode) System.err.println("IIT ML: (MaritalStatusOther): " + MaritalStatusOther);
 
 			// (MaritalStatusPolygamous)
 			Integer MaritalStatusPolygamous = getMaritalStatusPolygamous(demographics, Age);
-			System.err.println("IIT ML: (MaritalStatusPolygamous): " + MaritalStatusPolygamous);
+			if(debugMode) System.err.println("IIT ML: (MaritalStatusPolygamous): " + MaritalStatusPolygamous);
 
 			// (MaritalStatusSingle)
 			Integer MaritalStatusSingle = getMaritalStatusSingle(demographics, Age);
-			System.err.println("IIT ML: (MaritalStatusSingle): " + MaritalStatusSingle);
+			if(debugMode) System.err.println("IIT ML: (MaritalStatusSingle): " + MaritalStatusSingle);
 
 			// (MaritalStatusWidow)
 			Integer MaritalStatusWidow = getMaritalStatusWidow(demographics, Age);
-			System.err.println("IIT ML: (MaritalStatusWidow): " + MaritalStatusWidow);
+			if(debugMode) System.err.println("IIT ML: (MaritalStatusWidow): " + MaritalStatusWidow);
 
 			// Standard Care, Fast Track,
 			// (DifferentiatedCarecommunityartdistributionhcwled)
 			Integer DifferentiatedCarecommunityartdistributionhcwled = getDifferentiatedCarecommunityartdistributionhcwled(visits);
-			System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionhcwled): " + DifferentiatedCarecommunityartdistributionhcwled);
+			if(debugMode) System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionhcwled): " + DifferentiatedCarecommunityartdistributionhcwled);
 
 			// (DifferentiatedCarecommunityartdistributionpeerled)
 			Integer DifferentiatedCarecommunityartdistributionpeerled = getDifferentiatedCarecommunityartdistributionpeerled(visits);
-			System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionpeerled): " + DifferentiatedCarecommunityartdistributionpeerled);
+			if(debugMode) System.err.println("IIT ML: (DifferentiatedCarecommunityartdistributionpeerled): " + DifferentiatedCarecommunityartdistributionpeerled);
 
 			// (DifferentiatedCareexpress)
 			Integer DifferentiatedCareexpress = getDifferentiatedCareexpress(visits);
-			System.err.println("IIT ML: (DifferentiatedCareexpress): " + DifferentiatedCareexpress);
+			if(debugMode) System.err.println("IIT ML: (DifferentiatedCareexpress): " + DifferentiatedCareexpress);
 
 			// (DifferentiatedCarefacilityartdistributiongroup)
 			Integer DifferentiatedCarefacilityartdistributiongroup = getDifferentiatedCarefacilityartdistributiongroup(visits);
-			System.err.println("IIT ML: (DifferentiatedCarefacilityartdistributiongroup): " + DifferentiatedCarefacilityartdistributiongroup);
+			if(debugMode) System.err.println("IIT ML: (DifferentiatedCarefacilityartdistributiongroup): " + DifferentiatedCarefacilityartdistributiongroup);
 
 			// (DifferentiatedCarefasttrack)
 			Integer DifferentiatedCarefasttrack = getDifferentiatedCarefasttrack(visits);
-			System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + DifferentiatedCarefasttrack);
+			if(debugMode) System.err.println("IIT ML: (DifferentiatedCarefasttrack): " + DifferentiatedCarefasttrack);
 
 			// (DifferentiatedCarestandardcare)
 			Integer DifferentiatedCarestandardcare = getDifferentiatedCarestandardcare(visits);
-			System.err.println("IIT ML: (DifferentiatedCarestandardcare): " + DifferentiatedCarestandardcare);
+			if(debugMode) System.err.println("IIT ML: (DifferentiatedCarestandardcare): " + DifferentiatedCarestandardcare);
 
 			// (StabilityAssessmentStable)
 			Integer StabilityAssessmentStable = getStabilityAssessmentStable(visits);
-			System.err.println("IIT ML: (StabilityAssessmentStable): " + StabilityAssessmentStable);
+			if(debugMode) System.err.println("IIT ML: (StabilityAssessmentStable): " + StabilityAssessmentStable);
 
 			// (StabilityAssessmentUnstable)
 			Integer StabilityAssessmentUnstable = getStabilityAssessmentUnstable(visits);
-			System.err.println("IIT ML: (StabilityAssessmentUnstable): " + StabilityAssessmentUnstable);
+			if(debugMode) System.err.println("IIT ML: (StabilityAssessmentUnstable): " + StabilityAssessmentUnstable);
 
 			// (most_recent_art_adherencefair)
 			Integer most_recent_art_adherencefair = getMostRecentArtAdherenceFair(visits);
-			System.err.println("IIT ML: (most_recent_art_adherencefair): " + most_recent_art_adherencefair);
+			if(debugMode) System.err.println("IIT ML: (most_recent_art_adherencefair): " + most_recent_art_adherencefair);
 
 			// (most_recent_art_adherencegood)
 			Integer most_recent_art_adherencegood = getMostRecentArtAdherenceGood(visits);
-			System.err.println("IIT ML: (most_recent_art_adherencegood): " + most_recent_art_adherencegood);
+			if(debugMode) System.err.println("IIT ML: (most_recent_art_adherencegood): " + most_recent_art_adherencegood);
 
 			// (most_recent_art_adherencepoor)
 			Integer most_recent_art_adherencepoor = getMostRecentArtAdherencePoor(visits);
-			System.err.println("IIT ML: (most_recent_art_adherencepoor): " + most_recent_art_adherencepoor);
+			if(debugMode) System.err.println("IIT ML: (most_recent_art_adherencepoor): " + most_recent_art_adherencepoor);
 
 			// (Pregnantno)
 			SimpleObject Pregnantno = getPregnantNo(visits, patientGender, Age);
-			System.err.println("IIT ML: (Pregnantno): " + Pregnantno.get("result"));
+			if(debugMode) System.err.println("IIT ML: (Pregnantno): " + Pregnantno.get("result"));
 
 			// (PregnantNR)
 			Integer PregnantNR = getPregnantNR(patientGender, Age);
-			System.err.println("IIT ML: (PregnantNR): " + PregnantNR);
+			if(debugMode) System.err.println("IIT ML: (PregnantNR): " + PregnantNR);
 
 			// (Pregnantyes)
 			SimpleObject Pregnantyes = getPregnantYes(visits, patientGender, Age);
-			System.err.println("IIT ML: (Pregnantyes): " + Pregnantyes.get("result"));
+			if(debugMode) System.err.println("IIT ML: (Pregnantyes): " + Pregnantyes.get("result"));
 
 			// (Breastfeedingno)
 			SimpleObject Breastfeedingno = getBreastFeedingNo(visits, patientGender, Age);
-			System.err.println("IIT ML: (Breastfeedingno): " + Breastfeedingno.get("result"));
+			if(debugMode) System.err.println("IIT ML: (Breastfeedingno): " + Breastfeedingno.get("result"));
 
 			// (BreastfeedingNR)
 			Integer BreastfeedingNR = getBreastFeedingNR(patientGender, Age);
-			System.err.println("IIT ML: (BreastfeedingNR): " + BreastfeedingNR);
+			if(debugMode) System.err.println("IIT ML: (BreastfeedingNR): " + BreastfeedingNR);
 
 			// (Breastfeedingyes)
 			SimpleObject Breastfeedingyes = getBreastFeedingYes(visits, patientGender, Age);
-			System.err.println("IIT ML: (Breastfeedingyes): " + Breastfeedingyes.get("result"));
+			if(debugMode) System.err.println("IIT ML: (Breastfeedingyes): " + Breastfeedingyes.get("result"));
 
 			// (PopulationTypeGP)
 			Integer PopulationTypeGP = getPopulationTypeGP(demographics);
-			System.err.println("IIT ML: (PopulationTypeGP): " + PopulationTypeGP);
+			if(debugMode) System.err.println("IIT ML: (PopulationTypeGP): " + PopulationTypeGP);
 
 			// (PopulationTypeKP)
 			Integer PopulationTypeKP = getPopulationTypeKP(demographics);
-			System.err.println("IIT ML: (PopulationTypeKP): " + PopulationTypeKP);
+			if(debugMode) System.err.println("IIT ML: (PopulationTypeKP): " + PopulationTypeKP);
 
 			// (AHDNo)
 			SimpleObject AHDNo = getAHDNo(visits, cd4Counter, Age);
-			System.err.println("IIT ML: (AHDNo): " + AHDNo.get("result"));
+			if(debugMode) System.err.println("IIT ML: (AHDNo): " + AHDNo.get("result"));
 
 			// (AHDYes)
 			SimpleObject AHDYes = getAHDYes(visits, cd4Counter, Age);
-			System.err.println("IIT ML: (AHDYes): " + AHDYes.get("result"));
+			if(debugMode) System.err.println("IIT ML: (AHDYes): " + AHDYes.get("result"));
 
 			// (OptimizedHIVRegimenNo)
 			SimpleObject OptimizedHIVRegimenNo = getOptimizedHIVRegimenNo(pharmacy);
-			System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + OptimizedHIVRegimenNo.get("result"));
+			if(debugMode) System.err.println("IIT ML: (OptimizedHIVRegimenNo): " + OptimizedHIVRegimenNo.get("result"));
 
 			// (OptimizedHIVRegimenYes)
 			SimpleObject OptimizedHIVRegimenYes = getOptimizedHIVRegimenYes(pharmacy);
-			System.err.println("IIT ML: (OptimizedHIVRegimenYes): " + OptimizedHIVRegimenYes.get("result"));
+			if(debugMode) System.err.println("IIT ML: (OptimizedHIVRegimenYes): " + OptimizedHIVRegimenYes.get("result"));
 
 			// NB: Any number equal or above 200 is considered High Viral Load (HVL). Any below is LDL or suppressed or Low Viral Load (LVL)
 			// (most_recent_vlsuppressed)
 			Integer most_recent_vlsuppressed = getMostRecentVLsuppressed(lab);
-			System.err.println("IIT ML: (most_recent_vlsuppressed): " + most_recent_vlsuppressed);
+			if(debugMode) System.err.println("IIT ML: (most_recent_vlsuppressed): " + most_recent_vlsuppressed);
 
 			// (most_recent_vlunsuppressed)
 			Integer most_recent_vlunsuppressed = getMostRecentVLunsuppressed(lab);
-			System.err.println("IIT ML: (most_recent_vlunsuppressed): " + most_recent_vlunsuppressed);
+			if(debugMode) System.err.println("IIT ML: (most_recent_vlunsuppressed): " + most_recent_vlunsuppressed);
 
 			// (n_tests_threeyears)
 			Integer n_tests_threeyears = getNtestsThreeYears(lab);
-			System.err.println("IIT ML: (n_tests_threeyears): " + n_tests_threeyears);
+			if(debugMode) System.err.println("IIT ML: (n_tests_threeyears): " + n_tests_threeyears);
 
 			// (n_hvl_threeyears)
 			Integer n_hvl_threeyears = getNHVLThreeYears(lab);
-			System.err.println("IIT ML: (n_hvl_threeyears): " + n_hvl_threeyears);
+			if(debugMode) System.err.println("IIT ML: (n_hvl_threeyears): " + n_hvl_threeyears);
 
 			// (n_lvl_threeyears)
 			Integer n_lvl_threeyears = getNLVLThreeYears(lab);
-			System.err.println("IIT ML: (n_lvl_threeyears): " + n_lvl_threeyears);
+			if(debugMode) System.err.println("IIT ML: (n_lvl_threeyears): " + n_lvl_threeyears);
 
 			// (recent_hvl_rate)
 			Double recent_hvl_rate = getRecentHvlRate(n_hvl_threeyears, n_tests_threeyears);
-			System.err.println("IIT ML: (recent_hvl_rate): " + recent_hvl_rate);
+			if(debugMode) System.err.println("IIT ML: (recent_hvl_rate): " + recent_hvl_rate);
 
 			// (timeOnArt)
 			Long timeOnArt = getTimeOnArt(art);
-			System.err.println("IIT ML: (timeOnArt): " + timeOnArt);
+			if(debugMode) System.err.println("IIT ML: (timeOnArt): " + timeOnArt);
 
 			// Treatment Section
 			//Pharmacy
@@ -875,12 +849,12 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				}
 			}
 
-			System.err.println(
+			if(debugMode) System.err.println(
 					"IIT ML: Total number of regimens - nonfiltered (last 400 days): " + pharmTreatment.size());
 
 			// (num_hiv_regimens) -- Note: If zero, we show NA
 			SimpleObject num_hiv_regimens = getNumHivRegimens(pharmTreatment);
-			System.err.println("IIT ML: (num_hiv_regimens): " + num_hiv_regimens.get("result"));
+			if(debugMode) System.err.println("IIT ML: (num_hiv_regimens): " + num_hiv_regimens.get("result"));
 
 			// End Local Pull And Display
 
@@ -978,7 +952,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 
 			// Get JSON Payload
 			String payload = mlScoringRequestPayload.toJson();
-			System.out.println("IIT ML: Prediction Payload: " + payload);
+			if(debugMode) System.err.println("IIT ML: Prediction Payload: " + payload);
 			
 			// Get the IIT ML score
 			try {
@@ -989,7 +963,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					ObjectMapper mapper = new ObjectMapper();
 					ObjectNode jsonNode = (ObjectNode) mapper.readTree(mlScoreResponse);
 					if (jsonNode != null) {
-						System.out.println("IIT ML: Got ML Score Payload as: " + mlScoreResponse);
+						if(debugMode) System.err.println("IIT ML: Got ML Score Payload as: " + mlScoreResponse);
 						Double riskScore = 0.00;
 						// Double riskScore = jsonNode.get("result").get("predictions").get("Probability_1").getDoubleValue();
 						// Double riskScore = jsonNode.get("result").get("predictions").get("probability(1)").getDoubleValue();
@@ -1032,36 +1006,42 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						System.out.println("IIT ML: Got ML Description as: " + patientRiskScore.getDescription());
 						patientRiskScore.setEvaluationDate(new Date());
 
-						try {
-							patientRiskScore.setPayload(payload);
-							patientRiskScore = extractPayload(patientRiskScore, mlScoringRequestPayload);
+						// if we are in debug mode:
+						if(debugMode == true) {
+							try {
+								patientRiskScore.setPayload(payload);
+								patientRiskScore = extractPayload(patientRiskScore, mlScoringRequestPayload);
 
-							patientRiskScore.setLastDwapiEtlUpdate(lastETLUpdateSt);
+								patientRiskScore.setLastDwapiEtlUpdate(lastETLUpdateSt);
 
-							String facilityMflCode = MLUtils.getDefaultMflCode();
-							patientRiskScore.setMflCode(facilityMflCode);
+								String facilityMflCode = MLUtils.getDefaultMflCode();
+								patientRiskScore.setMflCode(facilityMflCode);
 
-							Hibernate.initialize(patient.getIdentifiers()); // fix lazy loading
-							String UNIQUE_PATIENT_NUMBER = "05ee9cf4-7242-4a17-b4d4-00f707265c8a";
-							PatientIdentifierType patientIdentifierType = Context.getPatientService().getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
-							PatientIdentifier cccNumberId = patient.getPatientIdentifier(patientIdentifierType); // error with lazy loading
-							String cccNumber = cccNumberId.getIdentifier();
-							patientRiskScore.setCccNumber(cccNumber);
-						} catch(Exception ex) {
-							System.err.println("ITT ML: Could not add payload, ccc or mfl " + ex.getMessage());
-							ex.printStackTrace();
+								Hibernate.initialize(patient.getIdentifiers()); // fix lazy loading
+								String UNIQUE_PATIENT_NUMBER = "05ee9cf4-7242-4a17-b4d4-00f707265c8a";
+								PatientIdentifierType patientIdentifierType = Context.getPatientService()
+										.getPatientIdentifierTypeByUuid(UNIQUE_PATIENT_NUMBER);
+								PatientIdentifier cccNumberId = patient
+										.getPatientIdentifier(patientIdentifierType); // error with lazy loading
+								String cccNumber = cccNumberId.getIdentifier();
+								patientRiskScore.setCccNumber(cccNumber);
+							}
+							catch (Exception ex) {
+								System.err.println("ITT ML: Could not add payload, ccc or mfl " + ex.getMessage());
+								ex.printStackTrace();
+							}
 						}
 						
-						System.out.println("IIT ML: PatientRiskScore is: " + patientRiskScore.toString());
+						if(debugMode) System.err.println("IIT ML: PatientRiskScore is: " + patientRiskScore.toString());
 
 						stopTime = System.currentTimeMillis();
 						long elapsedTime = stopTime - startTime;
-						System.out.println("Time taken: " + elapsedTime);
-						System.out.println("Time taken sec: " + elapsedTime / 1000);
+						if(debugMode) System.err.println("Time taken: " + elapsedTime);
+						if(debugMode) System.err.println("Time taken sec: " + elapsedTime / 1000);
 
 						stopMemory = getMemoryConsumption();
 						long usedMemory = stopMemory - startMemory;
-						System.out.println("Memory used: " + usedMemory);
+						if(debugMode) System.err.println("Memory used: " + usedMemory);
 
 						return(patientRiskScore);
 					} else {
@@ -1190,9 +1170,8 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 			prs.setVisit_5(convertToString(load.get("visit_5")));
 			prs.setWeight(convertToString(load.get("Weight")));
 
-
 		} catch(Exception ex) {
-			System.err.println("IIT ML: Got error inserting debug variables to DB: " + ex.getMessage());
+			System.err.println("IIT ML: Got error extracting payload variables for debug: " + ex.getMessage());
 			ex.printStackTrace();
 		}
 
@@ -1231,11 +1210,11 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
         runtime.gc();
         // Calculate the used memory
         long memory = runtime.totalMemory() - runtime.freeMemory();
-        System.out.println("Used memory is bytes: " + memory);
+        if(debugMode) System.err.println("IIT ML: Used memory is bytes: " + memory);
 
 		// get the MB
 		ret = memory / MEGABYTE;
-        System.out.println("Used memory is megabytes: " + ret);
+        if(debugMode) System.err.println("IIT ML: Used memory is megabytes: " + ret);
 
 		return(ret);
 	}
@@ -1790,7 +1769,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					int artPos = -1;
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
-							System.out.println("IIT ML: Position of 'ART': " + i);
+							if(debugMode) System.err.println("IIT ML: Position of 'ART': " + i);
 							artPos = i;
 							break;
 						}
@@ -1800,9 +1779,9 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						// We found ART adherence is covered we get the status
 						if (visitObject.get(9) != null) {
 							String adherenceString = (String) visitObject.get(9);
-							System.err.println("IIT ML: Adherence full string: " + adherenceString);
+							if(debugMode) System.err.println("IIT ML: Adherence full string: " + adherenceString);
 							String[] adherenceTokens = adherenceString.split("\\|");
-							System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
+							if(debugMode) System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
 							if(adherenceTokens.length > 0) {
 								for (int i = 0; i < adherenceTokens.length; i++) {
 									if(i == artPos) {
@@ -1835,7 +1814,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					int artPos = -1;
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
-							System.out.println("IIT ML: Position of 'ART': " + i);
+							if(debugMode) System.err.println("IIT ML: Position of 'ART': " + i);
 							artPos = i;
 							break;
 						}
@@ -1845,9 +1824,9 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						// We found ART adherence is covered we get the status
 						if (visitObject.get(9) != null) {
 							String adherenceString = (String) visitObject.get(9);
-							System.err.println("IIT ML: Adherence full string: " + adherenceString);
+							if(debugMode) System.err.println("IIT ML: Adherence full string: " + adherenceString);
 							String[] adherenceTokens = adherenceString.split("\\|");
-							System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
+							if(debugMode) System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
 							if(adherenceTokens.length > 0) {
 								for (int i = 0; i < adherenceTokens.length; i++) {
 									if(i == artPos) {
@@ -1880,7 +1859,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 					int artPos = -1;
 					for (int i = 0; i < tokens.length; i++) {
 						if (tokens[i].trim().equalsIgnoreCase("ART")) {
-							System.out.println("IIT ML: Position of 'ART': " + i);
+							if(debugMode) System.err.println("IIT ML: Position of 'ART': " + i);
 							artPos = i;
 							break;
 						}
@@ -1890,9 +1869,9 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 						// We found ART adherence is covered we get the status
 						if (visitObject.get(9) != null) {
 							String adherenceString = (String) visitObject.get(9);
-							System.err.println("IIT ML: Adherence full string: " + adherenceString);
+							if(debugMode) System.err.println("IIT ML: Adherence full string: " + adherenceString);
 							String[] adherenceTokens = adherenceString.split("\\|");
-							System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
+							if(debugMode) System.err.println("IIT ML: Adherence tokens: " + Arrays.toString(adherenceTokens));
 							if(adherenceTokens.length > 0) {
 								for (int i = 0; i < adherenceTokens.length; i++) {
 									if(i == artPos) {
@@ -2209,7 +2188,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				List<Object> sourceObject = demographics.get(demographics.size() - 1);
 				if(sourceObject.get(3) != null) {
 					String source = (String) sourceObject.get(3);
-					System.err.println("IIT ML: Raw Patient source is: " + source);
+					if(debugMode) System.err.println("IIT ML: Raw Patient source is: " + source);
 					if (source.trim().equalsIgnoreCase("vct")) {
 						ret = 1;
 					}
@@ -2227,7 +2206,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				List<Object> sourceObject = demographics.get(demographics.size() - 1);
 				if(sourceObject.get(3) != null) {
 					String source = (String) sourceObject.get(3);
-					System.err.println("IIT ML: Raw Patient source is: " + source);
+					if(debugMode) System.err.println("IIT ML: Raw Patient source is: " + source);
 					if (!source.trim().equalsIgnoreCase("opd") && !source.trim().equalsIgnoreCase("vct")) {
 						ret = 1;
 					}
@@ -2247,7 +2226,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				List<Object> sourceObject = demographics.get(demographics.size() - 1);
 				if(sourceObject.get(3) != null) {
 					String source = (String) sourceObject.get(3);
-					System.err.println("IIT ML: Raw Patient source is: " + source);
+					if(debugMode) System.err.println("IIT ML: Raw Patient source is: " + source);
 					if (source.trim().equalsIgnoreCase("opd")) {
 						ret = 1;
 					}
@@ -2691,7 +2670,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 		if(treatments != null) {
 			Set<String> drugs = new HashSet<>(); // This will ensure we get unique drugs
 			for (Treatment in : treatments) {
-				System.err.println("IIT ML: got drug: " + in.getDrug() + " Treatment Type: " + in.getTreatmentType());
+				if(debugMode) System.err.println("IIT ML: got drug: " + in.getDrug() + " Treatment Type: " + in.getTreatmentType());
 				if (in.getDrug() != null && in.getTreatmentType() != null && !in.getTreatmentType().trim().equalsIgnoreCase("Prophylaxis")) {
 					String drug = in.getDrug().trim().toLowerCase();
 					drugs.add(drug);
@@ -3092,7 +3071,7 @@ public class ModelServiceImpl extends BaseOpenmrsService implements ModelService
 				}
 			}
 		} catch(Exception ex) {
-			System.err.println("IIT ML: Error getting the last time the DWAPI ETL was updated");
+			if(debugMode) System.err.println("IIT ML: Error getting the last time the DWAPI ETL was updated");
 			ex.printStackTrace();
 		}
 		return(ret);
